@@ -1,156 +1,345 @@
 # REQUIREMENTS.md
-# ProgressBridge AI — Requirements Specification
-**Problem Statement:** SIH 26122  
-**Project:** Intelligent Data Capture & Schedule-Linking Platform  
+
+# ProgressBridge AI — Implementation Requirements
+
+**Project:** ProgressBridge AI  
+**Problem Statement:** SIH / OIL 26122  
 **Organization:** Oil India Limited (OIL)  
 **Theme:** Smart Automation  
-**Version:** 1.0  
+**Version:** 2.0  
 **Status:** MVP / SIH Hackathon
 
----
-
-## 1. Purpose
-
-This document defines the implementation requirements for ProgressBridge AI.
-
-The system converts heterogeneous field-execution inputs into structured progress events, semantically links those events to L5/L6 schedule activities, provides confidence scores, supports human validation, and updates project progress dashboards.
-
-This document is the implementation checklist for the MVP.
+> This document is derived from `PRD.md`. The updated PRD pivots the implementation to **Next.js + Supabase + n8n + Vercel + Render**, with Supabase Auth/RLS and pgvector. fileciteturn2file0L3-L11
 
 ---
 
-# 2. Product Objective
+## 1. Product Requirements Summary
 
-The product creates a reliable bridge between:
+The system shall convert fragmented field-progress inputs into structured execution events, semantically link those events to L5/L6 schedule activities, assign confidence, route uncertain matches to human review, update actual progress, and expose delay/risk insights and historical execution data. fileciteturn2file0L15-L45
+
+Core pipeline:
 
 ```text
-PLANNING
-L5/L6 Schedule
-     ↓
-FIELD EXECUTION
-Daily reports / spreadsheets / supervisor updates
-     ↓
-AI PROCESSING
-Extraction + normalization + semantic matching
-     ↓
-VALIDATION
-Human review
-     ↓
-PROJECT VISIBILITY
-Actual progress + delays + analytics + audit trail
+Messy Field Input
+        ↓
+n8n Ingestion
+        ↓
+LLM Structured Extraction
+        ↓
+Entity Normalization
+        ↓
+pgvector + Hybrid Matching
+        ↓
+Confidence Scoring
+        ↓
+Human Review
+        ↓
+Supabase Progress Update + Audit
+        ↓
+Dashboard / Delay / Risk Insights
+        ↓
+Institutional Memory
 ```
 
 ---
 
-# 3. Scope
+# 2. Scope
 
-## 3.1 MVP In Scope
+## 2.1 P0 — Must Have
+
+The MVP must support:
 
 - Project creation
-- Schedule upload
-- CSV/XLSX schedule ingestion
-- Daily report/text ingestion
-- Discipline spreadsheet ingestion
-- AI-based event extraction
-- Activity normalization
-- Semantic activity matching
-- Confidence scoring
+- Supabase authentication
+- Supervisor and planner roles
+- Schedule upload: CSV/XLS/XLSX
+- Schedule validation
+- Schedule indexing with embeddings
+- Free-text daily report ingestion
+- Discipline-wise spreadsheet ingestion
+- LLM structured extraction
+- Activity/entity normalization
+- pgvector semantic candidate retrieval
+- Hybrid match scoring
+- Match confidence
 - Human review
-- Actual start/end tracking
-- Progress status tracking
+- Actual start/end updates
+- Activity status updates
 - Delay calculation
 - Unmatched-event queue
-- Dashboard
-- Activity details
+- Project dashboard
+- Discipline metrics
+- Planned vs actual timeline
+- Recent events
 - Audit trail
-- Synthetic/sample data
-- Local Docker deployment
+- Source traceability
+- Conversational text “time agent”
+- Synthetic demo data
+- Vercel frontend deployment
+- Supabase Postgres/pgvector/Auth/Storage/RLS
+- n8n ingestion/extraction/matching workflows
 
-## 3.2 MVP Out of Scope
+The PRD requires at least three input types: CSV/Excel schedule, free-text daily report, and discipline-wise spreadsheet. fileciteturn2file0L160-L169
 
-- Live OIL production-data integration
-- Full Primavera P6 bidirectional integration
-- Full MS Project bidirectional integration
-- Enterprise SSO
-- Production-grade OCR
-- Production-grade ASR
-- Native mobile application
-- Kubernetes
-- Distributed processing
-- Advanced predictive ML
-- Automatic schedule modification without review
-- Multi-tenant enterprise architecture
+## 2.2 P1 — Should Have
 
----
+- PDF text ingestion
+- Voice transcript as text input
+- Delay-reason analytics
+- Search
+- Better duplicate detection
+- More polished planned-vs-actual views
 
-# 4. User Requirements
+## 2.3 P2 — Nice to Have
 
-## UR-01 — Project Creation
+- OCR
+- Real speech-to-text
+- Primavera integration mock
+- Predictive delay analytics
+- Advanced institutional-memory search
 
-Users must be able to create a project with:
-
-- Project name
-- Project code
-- Organization
-- Planned start date
-- Planned finish date
-
-## UR-02 — Schedule Management
-
-Users must be able to upload and view project schedules.
-
-## UR-03 — Progress Reporting
-
-Users must be able to provide field progress through simple input mechanisms.
-
-## UR-04 — Review
-
-Planners must be able to review, approve, reject, or override AI-generated activity matches.
-
-## UR-05 — Monitoring
-
-Project managers must be able to view current progress, delays, exceptions, and data-quality metrics.
+These remain secondary to the core end-to-end MVP. fileciteturn2file0L554-L560
 
 ---
 
-# 5. Functional Requirements
+# 3. Architecture Requirements
 
-## FR-001 — Project Management
-
-The application shall support:
-
-- Create project
-- List projects
-- Open project
-- Edit project metadata
-- Archive project
-
-Required project fields:
+The implementation shall follow the v2 architecture:
 
 ```text
-id
-name
-code
-organization
-planned_start
-planned_finish
-created_at
-updated_at
+                    ┌──────────────────────────────┐
+                    │ Next.js + TypeScript         │
+                    │ Tailwind + shadcn/ui         │
+                    │ Vercel                       │
+                    └────────────┬─────────────────┘
+                                 │
+                    ┌────────────┴─────────────┐
+                    │                          │
+             Supabase Client             Webhooks / API
+             Auth / Reads / RLS                │
+                    │                          │
+                    ▼                          ▼
+              ┌───────────┐             ┌────────────┐
+              │ Supabase  │◄────────────┤    n8n     │
+              │ Postgres  │             │ Ingestion  │
+              │ pgvector  │             │ Extraction │
+              │ Auth      │             │ Matching   │
+              │ Storage   │             └─────┬──────┘
+              └─────┬─────┘                   │
+                    │                         │
+                    └──────────┬──────────────┘
+                               ▼
+                         Audit / Analytics
+```
+
+n8n should own the messy ingestion/extraction/matching workflow where practical. Supabase should own persistent data, authentication, storage, vector search, and RLS. If custom logic is needed, use an isolated Next.js/Vercel or Supabase Edge Function rather than adding a second full backend service. fileciteturn2file0L278-L306
+
+---
+
+# 4. Frontend Requirements
+
+## FE-001 — Framework
+
+Use:
+
+```text
+Next.js
+React
+TypeScript
+```
+
+Deploy to:
+
+```text
+Vercel
+```
+
+## FE-002 — UI Libraries
+
+Use or evaluate the versions selected by the project:
+
+```text
+Tailwind CSS
+shadcn/ui
+TanStack Query
+React Hook Form
+Zod
+Recharts
+```
+
+These are the technologies listed in the updated PRD. fileciteturn2file0L310-L317
+
+## FE-003 — Main Navigation
+
+```text
+Dashboard
+Projects
+Schedule
+Reports
+AI Extraction
+Review Queue
+Activities
+Analytics
+Audit Log
+Settings
+```
+
+## FE-004 — Dashboard
+
+Must display:
+
+```text
+Total Activities
+Completed
+In Progress
+Delayed
+Pending Review
+Unmatched
+```
+
+Charts:
+
+- Progress by discipline
+- Planned vs actual
+- Delay distribution
+- Recent events
+
+## FE-005 — Upload UI
+
+The upload interface shall:
+
+- Accept supported file types
+- Show upload status
+- Show processing stages
+- Display:
+
+```text
+Parsing...
+Extracting...
+Matching...
+```
+
+## FE-006 — Review UI
+
+Use a three-step/three-column workflow:
+
+```text
+Source
+   →
+Extracted Event
+   →
+Schedule Match
+```
+
+Display:
+
+- Original source/report
+- Extracted fields
+- Suggested activity
+- Confidence
+- Matching reasons
+
+Actions:
+
+```text
+Accept
+Reject
+Change Match
+```
+
+## FE-007 — Activity Details
+
+Display:
+
+```text
+Activity ID
+Description
+Discipline
+Planned Dates
+Actual Dates
+Status
+Delay
+Source Reports
+Audit History
 ```
 
 ---
 
-## FR-002 — Schedule File Upload
+# 5. Authentication & Authorization Requirements
 
-The system shall accept:
+The v2 PRD introduces Supabase Auth and two MVP roles. fileciteturn2file0L247-L247
+
+## AUTH-001 — Supabase Auth
+
+Use Supabase Auth with either:
+
+```text
+Email/password
+or
+Magic link
+```
+
+Do not create custom JWT signing/rotation middleware.
+
+## AUTH-002 — Roles
+
+Support exactly:
+
+```text
+supervisor
+planner
+```
+
+## AUTH-003 — Supervisor
+
+Supervisor can:
+
+- Sign in
+- Access assigned projects
+- Submit reports
+- Submit time-agent messages
+- View own submissions/status
+
+Supervisor cannot approve/override planner decisions.
+
+## AUTH-004 — Planner
+
+Planner can:
+
+- View assigned projects
+- View full review queue
+- Approve matches
+- Reject matches
+- Override matches
+- View project dashboard
+- View activity data
+- View audit history
+
+## AUTH-005 — Row-Level Security
+
+Use Supabase Postgres RLS policies keyed by:
+
+```text
+project_id
+authenticated user
+role
+```
+
+Do not rely only on frontend checks.
+
+---
+
+# 6. Schedule Requirements
+
+## SCH-001 — Supported Formats
 
 ```text
 .csv
-.xlsx
 .xls
+.xlsx
 ```
 
-Minimum required columns:
+## SCH-002 — Required Columns
 
 ```text
 activity_id
@@ -164,120 +353,114 @@ planned_finish
 Optional:
 
 ```text
-level
 location
-asset
 parent_activity
 duration
 predecessors
 responsible_contractor
+level
+asset
 ```
 
----
+## SCH-003 — Validation
 
-## FR-003 — Schedule Validation
+Validate:
 
-The system shall:
+- Required columns
+- Valid dates
+- Unique activity IDs
+- Non-empty descriptions
+- Supported format
+- Invalid rows
 
-- Detect missing required columns
-- Detect duplicate activity IDs
-- Validate date fields
-- Detect empty descriptions
-- Detect unsupported formats
-- Report invalid rows
-- Show import summary
+Provide import summary and downloadable error report. fileciteturn2file0L203-L209
 
-Example:
+## SCH-004 — Normalization
 
-```text
-Total rows: 1000
-Valid: 987
-Invalid: 13
-Duplicates: 4
-```
-
----
-
-## FR-004 — Schedule Normalization
-
-The system shall normalize schedule text before indexing.
-
-Examples:
-
-```text
-"Erect Line 24-XX"
-"ERCT LINE 24 XX"
-"Line 24-XX Erection"
-```
-
-Normalization may include:
+Normalize:
 
 - Case
-- Extra spaces
-- Common abbreviations
+- Whitespace
 - Punctuation
-- Basic spelling variations
+- Common abbreviations
+- Basic spelling differences
 
-Original schedule data must remain available.
+Preserve original data.
+
+## SCH-005 — L5/L6 Indexing
+
+Each activity must be indexed with:
+
+```text
+activity_id
+wbs
+description
+discipline
+location
+asset/entity identifiers
+normalized search text
+embedding
+```
+
+Embeddings are stored using Supabase pgvector. fileciteturn2file0L211-L213
 
 ---
 
-## FR-005 — Schedule Indexing
+# 7. Document & Report Requirements
 
-Each activity shall be indexed using:
-
-- Activity ID
-- Description
-- WBS
-- Discipline
-- Location
-- Asset/entity information
-- Search text
-- Embedding vector
-
-The index must support semantic candidate retrieval.
-
----
-
-## FR-006 — Field Report Upload
-
-The system shall accept at least:
+## DOC-001 — Required Inputs
 
 ```text
 TXT
 CSV
-XLSX
+XLSX/XLS
 ```
 
-PDF support should be included when practical.
+PDF is P1.
 
-Each uploaded source shall store:
+## DOC-002 — Source Metadata
+
+Each source must retain:
 
 ```text
-document_id
-project_id
+source_id
 filename
 source_type
 uploaded_by
 uploaded_at
-raw_text
+project_id
+```
+
+## DOC-003 — Original Source
+
+Original source content must remain retrievable for audit/evidence.
+
+## DOC-004 — Spreadsheet Parsing
+
+Discipline spreadsheets should be converted into meaningful records/text while preserving source values.
+
+## DOC-005 — Processing State
+
+A document should expose:
+
+```text
+UPLOADED
+PARSING
+EXTRACTING
+MATCHING
+COMPLETED
+FAILED
 ```
 
 ---
 
-## FR-007 — Text Extraction
+# 8. AI Extraction Requirements
 
-The system shall extract usable text from supported uploaded documents.
+## AI-001 — Structured Output
 
-For spreadsheets, meaningful rows/cells should be identified instead of treating the entire workbook as one text block.
+LLM output must be schema-constrained JSON.
 
----
-
-## FR-008 — AI Event Extraction
-
-The system shall identify execution events from unstructured text.
-
-Supported fields:
+Required fields:
 
 ```text
 discipline
@@ -289,10 +472,13 @@ asset
 location
 quantity
 delay_reason
+source_id
 source_evidence
 ```
 
-Supported event types:
+## AI-002 — Event Types
+
+Support:
 
 ```text
 STARTED
@@ -303,60 +489,50 @@ BLOCKED
 CANCELLED
 ```
 
----
+## AI-003 — No Hallucination
 
-## FR-009 — Structured AI Response
+The AI must not invent:
 
-AI output must conform to a predefined schema.
+- Activity IDs
+- Dates
+- Times
+- Quantities
+- Locations
+- Delay reasons
 
-Example:
+Use `null` when unsupported by the source.
 
-```json
-{
-  "events": [
-    {
-      "discipline": "Piping",
-      "activity_description": "spool erection",
-      "event_type": "STARTED",
-      "event_date": "2026-08-29",
-      "event_time": "10:30",
-      "asset": "Line 24-XX",
-      "location": "North Unit",
-      "quantity": null,
-      "delay_reason": null,
-      "source_evidence": "Spool erection for Line 24-XX started at 10:30 AM."
-    }
-  ]
-}
-```
+## AI-004 — Evidence
 
-The model must not invent values unsupported by the source.
+Retain source evidence spans where possible.
 
-Unknown values must be represented as:
+## AI-005 — Prompt Versioning
+
+Prompts must be version controlled under:
 
 ```text
-null
+docs/prompts/
 ```
 
----
+The PRD explicitly requires version-controlled prompt templates. fileciteturn2file0L323-L329
 
-## FR-010 — Evidence Preservation
+## AI-006 — Failure Handling
 
-Every extracted event should retain source evidence wherever possible.
-
-Example:
+On AI/API failure:
 
 ```text
-Field: event_time
-Value: 10:30
-Evidence: "started at 10:30 AM"
+Retry
+↓
+Manual entry / review
 ```
+
+Source data must not be lost.
 
 ---
 
-## FR-011 — Entity Normalization
+# 9. Entity Normalization Requirements
 
-The system should normalize entities such as:
+Normalize common entities such as:
 
 ```text
 Line 24-XX
@@ -365,107 +541,145 @@ Line 24-XX
 24-inch process line
 ```
 
-into a common representation when the underlying entity can be confidently identified.
+Support where practical:
 
-Original text must remain accessible.
+```text
+line numbers
+equipment IDs
+location names
+discipline names
+common activity abbreviations
+```
+
+Preserve raw text for traceability.
 
 ---
 
-## FR-012 — Candidate Retrieval
+# 10. Semantic Matching Requirements
 
-For each extracted event, the system shall retrieve the most relevant schedule activities.
+## MATCH-001 — Candidate Retrieval
 
-The system should return the top-N candidates.
+For every extracted event:
+
+1. Apply appropriate metadata filters.
+2. Query pgvector.
+3. Retrieve top-N candidates.
+4. Compute additional matching signals.
+5. Produce final confidence.
+
+## MATCH-002 — Embedding Text
+
+Recommended schedule embedding input:
+
+```text
+discipline | activity_description | location | asset | WBS
+```
+
+## MATCH-003 — Hybrid Scoring
+
+Use:
+
+```text
+Semantic similarity
+Identifier match
+Discipline match
+Location match
+Keyword/context match
+```
+
+Initial configurable weights:
+
+```text
+Semantic similarity   50%
+Identifier match      25%
+Discipline match      15%
+Location match        10%
+```
+
+These weights are from the v2 PRD and must remain configurable. fileciteturn2file0L251-L273
+
+## MATCH-004 — Candidate Results
 
 Example:
 
 ```text
-1. PIP-2458 — Erect Line 24-XX       0.94
-2. PIP-2512 — Fabricate Line 24-XX   0.63
-3. PIP-3144 — Hydrotest Line 24-XX   0.41
+PIP-2458 — Erect Line 24-XX       94%
+PIP-2512 — Fabricate Line 24-XX   61%
+PIP-3144 — Hydrotest Line 24-XX   42%
 ```
 
----
+## MATCH-005 — Confidence
 
-## FR-013 — Hybrid Activity Matching
-
-The matching engine shall combine multiple signals:
+Default policy:
 
 ```text
-Semantic similarity
-Identifier/line/equipment match
-Discipline match
-Location match
-Keyword similarity
-WBS/context similarity
-```
-
-Recommended initial weighting:
-
-```text
-0.50 * semantic_similarity
-+ 0.25 * identifier_score
-+ 0.15 * discipline_score
-+ 0.10 * location_score
-```
-
-Weights must be configurable.
-
----
-
-## FR-014 — Match Confidence
-
-Every suggested match must have a confidence score.
-
-Recommended initial policy:
-
-```text
->= 0.90
-HIGH CONFIDENCE
-
-0.70 - 0.89
-REVIEW REQUIRED
-
-< 0.70
-UNMATCHED / MANUAL SELECTION
+>= 90% → HIGH CONFIDENCE
+70–89% → REVIEW REQUIRED
+< 70%  → UNMATCHED / MANUAL SELECTION
 ```
 
 Thresholds must be configurable.
 
----
+## MATCH-006 — Explainability
 
-## FR-015 — Human Review
-
-Reviewers must be able to:
-
-- Accept suggested match
-- Reject match
-- Select another activity
-- Mark as new/unplanned activity
-- Correct extracted fields
-- Add reviewer comment
-
-The reviewer decision must be logged.
-
----
-
-## FR-016 — Progress Event State
-
-Progress events shall support:
+For each suggestion show reasons such as:
 
 ```text
-PENDING_REVIEW
-APPROVED
-REJECTED
-OVERRIDDEN
-UNMATCHED
+✓ Same discipline
+✓ Same line identifier
+✓ Similar activity wording
+✓ Same location
 ```
 
 ---
 
-## FR-017 — Activity Status
+# 11. Human Review Requirements
 
-Schedule activities shall support:
+## REV-001 — Review Queue
+
+Queue:
+
+- Medium-confidence matches
+- Low-confidence matches
+- Ambiguous matches
+- Manually flagged records
+
+## REV-002 — Actions
+
+Planner can:
+
+```text
+Accept
+Reject
+Choose Another
+Mark as New/Unplanned
+Edit Extracted Fields
+Add Comment
+```
+
+## REV-003 — No Silent Failure
+
+Unmatched events must never be silently dropped.
+
+## REV-004 — Review Audit
+
+Record:
+
+```text
+event_id
+reviewer
+decision
+old_match
+new_match
+comment
+timestamp
+```
+
+---
+
+# 12. Progress Update Requirements
+
+## PROG-001 — Activity Statuses
 
 ```text
 NOT_STARTED
@@ -477,144 +691,95 @@ BLOCKED
 CANCELLED
 ```
 
----
+## PROG-002 — Actual Start
 
-## FR-018 — Actual Start Date
+An approved STARTED event updates `actual_start`.
 
-When a STARTED event is approved and linked to an activity:
+If multiple approved starts exist, retain the earliest unless explicitly overridden.
 
-```text
-activity.actual_start
-```
+## PROG-003 — Actual Finish
 
-shall be populated or updated.
+An approved COMPLETED event updates `actual_finish`.
 
-If multiple start events exist, retain the earliest approved actual start unless a reviewer explicitly overrides it.
+## PROG-004 — Last Updated
 
----
+Track `last_updated_at`.
 
-## FR-019 — Actual Finish Date
-
-When a COMPLETED event is approved and linked to an activity:
+## PROG-005 — State Flow
 
 ```text
-activity.actual_finish
+NOT_STARTED
+     ↓
+STARTED
+     ↓
+IN_PROGRESS
+     ↓
+COMPLETED
 ```
-
-shall be populated or updated.
-
----
-
-## FR-020 — Duplicate Detection
-
-The system should detect likely duplicate progress events using combinations of:
-
-- Activity ID
-- Event type
-- Event date/time
-- Similar source text
-- Source document
-
-Potential duplicates should be flagged rather than silently duplicated.
 
 ---
 
-## FR-021 — Delay Calculation
+# 13. Delay Requirements
 
-For completed activities:
-
-```text
-delay_days =
-actual_finish - planned_finish
-```
-
-For active unfinished activities:
+## DLY-001 — Completed Activity
 
 ```text
-delay_days =
-current_date - planned_finish
+delay_days = actual_finish - planned_finish
 ```
 
-Classify activities as:
+## DLY-002 — Ongoing Activity
+
+```text
+expected_delay = current_date - planned_finish
+```
+
+## DLY-003 — Classification
 
 ```text
 EARLY
 ON_TIME
 DELAYED
+AT_RISK
 ```
 
----
+## DLY-004 — Delay Reasons
 
-## FR-022 — Delay Reason Extraction
-
-The system should identify delay reasons when explicitly stated.
-
-Examples:
+Support stated reasons including:
 
 ```text
 Material unavailable
+Equipment breakdown
 Manpower shortage
-Equipment failure
 Weather
-Permit delay
 Design change
+Permit delay
 Access issue
 Safety hold
 ```
 
-If no reason is present:
-
-```text
-delay_reason = null
-```
-
-The system must not guess.
+Do not infer unstated reasons.
 
 ---
 
-## FR-023 — Unmatched Queue
+# 14. Duplicate Detection Requirements
 
-The system shall provide a dedicated unmatched-event page.
-
-Each record should show:
-
-```text
-Original report text
-Extracted event
-Top candidates
-Similarity/confidence
-Reason for uncertainty
-Review actions
-```
-
----
-
-## FR-024 — Activity Details
-
-Each activity page shall show:
+Flag probable duplicates using:
 
 ```text
 Activity ID
-WBS
-Description
-Discipline
-Location
-Planned Start
-Planned Finish
-Actual Start
-Actual Finish
-Status
-Delay
-Linked Reports
-Match History
-Audit History
+Event type
+Event date/time
+Similar text
+Source document
 ```
+
+Do not silently create duplicate progress events.
 
 ---
 
-## FR-025 — Dashboard
+# 15. Dashboard Requirements
 
-The main dashboard shall display:
+## DASH-001 — Project KPIs
 
 ```text
 Total Activities
@@ -626,7 +791,7 @@ Pending Review
 Unmatched
 ```
 
-Additional metrics:
+## DASH-002 — Data Quality
 
 ```text
 Reports Processed
@@ -635,11 +800,9 @@ High-Confidence Matches
 Manual Overrides
 ```
 
----
+## DASH-003 — Discipline Metrics
 
-## FR-026 — Discipline Dashboard
-
-At minimum support:
+Support:
 
 ```text
 Civil
@@ -650,46 +813,44 @@ Instrumentation
 HSE
 ```
 
-Users should be able to compare:
-
-- Activity count
-- Completion percentage
-- Delayed activity count
-- Pending review count
-
----
-
-## FR-027 — Planned vs Actual View
-
-Provide a visual timeline comparing:
+Show:
 
 ```text
-Planned Start → Planned Finish
-Actual Start  → Actual Finish
+Activity count
+Completion %
+Delayed count
+Pending review count
 ```
 
-Display delay days.
+## DASH-004 — Recent Events
 
----
-
-## FR-028 — Recent Activity Feed
-
-Show recently approved execution events.
-
-Example:
+Show:
 
 ```text
-10:32 AM
-PIP-2458 started
-Source: Daily Report #1042
-Confidence: 94%
+Timestamp
+Activity
+Event/status
+Source
+Confidence
+```
+
+## DASH-005 — Planned vs Actual
+
+Show:
+
+```text
+Planned Start
+Planned Finish
+Actual Start
+Actual Finish
+Delay Days
 ```
 
 ---
 
-## FR-029 — Search
+# 16. Search Requirements
 
-Search must support:
+Search by:
 
 ```text
 Activity ID
@@ -697,53 +858,57 @@ Description
 WBS
 Discipline
 Location
-Asset
-Document
+Line
+Equipment
 Event
+Source document
 ```
 
 ---
 
-## FR-030 — Audit Trail
+# 17. Audit & Traceability Requirements
 
-Maintain history for critical changes.
+## AUD-001 — Audit Log
 
-Each log should include:
+Record:
 
 ```text
 audit_id
+event_id
+activity_id
 action
-entity_type
-entity_id
 old_value
 new_value
-user
-timestamp
+user_id
 comment
-source
+created_at
 ```
 
----
+## AUD-002 — Source Traceability
 
-## FR-031 — Source Traceability
-
-Users must be able to navigate:
+Navigation must work:
 
 ```text
 Activity
-   ↓
+    ↓
 Matched Event
-   ↓
+    ↓
 Source Document
-   ↓
+    ↓
 Original Evidence
 ```
 
+## AUD-003 — Historical Record
+
+Critical progress and review history must be retained instead of overwritten.
+
 ---
 
-## FR-032 — Conversational Reporting
+# 18. Conversational Time Agent Requirements
 
-Provide a text input for supervisor-style reporting.
+## TA-001 — Text Input
+
+Provide a conversational text box.
 
 Example:
 
@@ -751,508 +916,443 @@ Example:
 Completed valve installation on Line 18-B at 4 PM.
 ```
 
-This must use the same extraction and matching pipeline as uploaded reports.
-
----
-
-## FR-033 — Voice-Ready Architecture
-
-The backend shall accept a future speech-to-text transcript without changing the event-extraction pipeline.
-
-MVP may use text input instead of full speech recognition.
-
----
-
-# 6. AI Requirements
-
-## AI-001 — Structured Extraction
-
-The LLM must return schema-valid structured data.
-
-## AI-002 — No Hallucinated Facts
-
-The model must not create:
-
-- Activity IDs
-- Dates
-- Times
-- Quantities
-- Locations
-- Delay reasons
-
-unless supported by source evidence.
-
-## AI-003 — Extraction Confidence
-
-Store extraction confidence where supported.
-
-## AI-004 — Match Explainability
-
-Show the main factors contributing to a suggested match.
-
-Example:
+## TA-002 — Same Pipeline
 
 ```text
-✓ Same discipline
-✓ Same line identifier
-✓ High semantic similarity
-✓ Same location
+Text
+ ↓
+LLM extraction
+ ↓
+Normalization
+ ↓
+Matching
+ ↓
+Confidence
+ ↓
+Review / update
 ```
 
-## AI-005 — Model Failure Handling
+## TA-003 — Voice Ready
 
-If AI fails:
+Architecture must accept a future speech-to-text transcript without changing downstream extraction/matching.
+
+Actual speech-to-text is Phase 2.
+
+---
+
+# 19. Supabase Requirements
+
+Supabase shall provide:
+
+```text
+Postgres
+pgvector
+Auth
+Storage
+Row-Level Security
+```
+
+No separate vector database or auth service is required for MVP. fileciteturn2file0L323-L338
+
+## Storage
+
+Uploaded files must be stored in Supabase Storage.
+
+Storage policies must respect project/role permissions.
+
+---
+
+# 20. n8n Requirements
+
+n8n shall own the primary ingestion/extraction/matching workflow where practical.
+
+Recommended workflow:
+
+```text
+Webhook / Trigger
+      ↓
+Identify Project/User
+      ↓
+Fetch Source / File
+      ↓
+Parse Input
+      ↓
+LLM Structured Extraction
+      ↓
+Normalize Entities
+      ↓
+Generate Embedding / Search
+      ↓
+Retrieve Candidates
+      ↓
+Hybrid Score
+      ↓
+Write Match + Confidence
+      ↓
+Route:
+  High → review/update path
+  Medium → review queue
+  Low → unmatched
+```
+
+n8n's canvas should remain understandable and visually inspectable because the PRD treats it as a demo and debugging aid. fileciteturn2file0L103-L110
+
+---
+
+# 21. API / Workflow Contract Requirements
+
+Implementation may use Next.js API routes, Supabase RPC/Edge Functions, or n8n webhooks. The logical contracts must remain consistent. fileciteturn2file0L348-L381
+
+```http
+POST /api/projects
+GET  /api/projects
+GET  /api/projects/{project_id}
+
+POST /api/projects/{project_id}/schedule/upload
+GET  /api/projects/{project_id}/activities
+GET  /api/activities/{activity_id}
+
+POST /api/projects/{project_id}/documents
+GET  /api/projects/{project_id}/documents
+GET  /api/documents/{document_id}
+
+POST /api/documents/{document_id}/extract
+GET  /api/documents/{document_id}/events
+
+POST /api/events/{event_id}/match
+GET  /api/events/{event_id}/candidates
+
+POST /api/events/{event_id}/approve
+POST /api/events/{event_id}/reject
+POST /api/events/{event_id}/override
+
+GET /api/projects/{project_id}/dashboard
+GET /api/projects/{project_id}/delays
+GET /api/projects/{project_id}/unmatched
+GET /api/projects/{project_id}/recent-events
+```
+
+## Standard Response
+
+Success:
+
+```json
+{"success": true, "data": {}}
+```
+
+Error:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Human readable",
+    "fields": {}
+  }
+}
+```
+
+---
+
+# 22. Data Model Requirements
+
+## Project
+
+```text
+id
+name
+code
+organization
+planned_start
+planned_finish
+created_at
+updated_at
+```
+
+## Schedule Activity
+
+```text
+id
+project_id
+activity_id
+wbs
+level
+description
+discipline
+location
+asset
+planned_start
+planned_finish
+duration
+status
+actual_start
+actual_finish
+embedding
+```
+
+## Document
+
+```text
+id
+project_id
+filename
+source_type
+mime_type
+raw_text
+uploaded_by
+uploaded_at
+```
+
+## Progress Event
+
+```text
+id
+project_id
+document_id
+discipline
+activity_description
+asset
+location
+event_type
+event_date
+event_time
+quantity
+delay_reason
+extraction_confidence
+match_confidence
+status
+created_at
+```
+
+## Activity Match
+
+```text
+id
+event_id
+activity_id
+semantic_score
+identifier_score
+discipline_score
+location_score
+final_score
+match_status
+reviewed_by
+reviewed_at
+```
+
+## Audit Log
+
+```text
+id
+event_id
+activity_id
+action
+old_value
+new_value
+user_id
+comment
+created_at
+```
+
+## User Profile
+
+Supabase Auth-backed profile:
+
+```text
+id
+email
+role
+project_ids
+created_at
+```
+
+The v2 PRD defines these entities and fields and requires project/role access to be enforced through RLS. fileciteturn2file0L392-L406
+
+---
+
+# 23. Security Requirements
+
+## SEC-001 — Authentication
+
+Use Supabase Auth.
+
+## SEC-002 — Authorization
+
+Use Postgres RLS.
+
+## SEC-003 — Secrets
+
+Store secrets only in platform environment-variable/configuration stores:
+
+```text
+Vercel
+Render
+Supabase
+n8n
+```
+
+Commit only `.env.example` with placeholders.
+
+## SEC-004 — File Uploads
+
+Validate:
+
+- file type
+- file size
+- filename
+
+Use Storage access policies scoped by project/role.
+
+## SEC-005 — Logging
+
+Never log:
+
+- API keys
+- access tokens
+- secrets
+- full sensitive uploaded document bodies
+
+## SEC-006 — Data Policy
+
+Only synthetic/sample/anonymized data may be used for the hackathon. No real OIL production data. fileciteturn2file0L424-L435
+
+---
+
+# 24. Performance Requirements
+
+MVP targets:
+
+```text
+Schedule upload:      < 10 seconds
+Text extraction:      < 10 seconds/report
+Candidate matching:   < 3 seconds/event
+Dashboard load:       < 2 seconds
+```
+
+Demo-scale target:
+
+```text
+500–1,000 schedule activities
+hundreds of extracted events
+```
+
+These are demo targets rather than production guarantees. fileciteturn2file0L439-L445
+
+---
+
+# 25. Error Handling Requirements
+
+## ERR-001 — Invalid Schedule
+
+Report missing required columns and provide an error report.
+
+## ERR-002 — Unreadable Document
+
+Show:
+
+```text
+Could not extract text — unsupported/corrupted format.
+```
+
+## ERR-003 — AI Failure
+
+Show:
 
 ```text
 Retry
-↓
-Fallback/manual entry
+Enter Manually
 ```
 
-The source document must not be lost.
+## ERR-004 — Low Confidence
+
+Show:
+
+```text
+No reliable match found
+Review Manually
+```
+
+## ERR-005 — Duplicate
+
+Flag possible duplicates rather than silently inserting them.
 
 ---
 
-# 7. Data Requirements
+# 26. AI Trust Requirements
 
-## DR-001 — Schedule Data
-
-Sample schedule should contain realistic L5/L6 records.
-
-Recommended demo size:
+Enforce:
 
 ```text
-500–1,000 activities
+Missing information → null / Unknown
+Low confidence      → human review
+Ambiguous match     → show alternatives
+Every update        → audit trail
 ```
 
-## DR-002 — Disciplines
+AI must never silently invent activity IDs, dates, quantities, or delay reasons, and must never silently auto-map uncertain activities. fileciteturn2file0L460-L468
+
+---
+
+# 27. Demo Dataset Requirements
+
+Create:
+
+```text
+Project: OIL Demo Refinery Expansion
+Activities: 500–1,000 L5/L6
+Disciplines: Civil, Piping, Mechanical, Electrical, Instrumentation, HSE
+```
+
+Files:
+
+```text
+schedule.xlsx
+daily_report_01.txt
+daily_report_02.txt
+piping_progress.xlsx
+civil_progress.xlsx
+```
 
 Include:
 
 ```text
-Civil
-Piping
-Mechanical
-Electrical
-Instrumentation
-HSE
+Exact match
+Paraphrase
+Abbreviation
+Identifier match
+Ambiguous match
+Unmatched event
+Different disciplines
+Delay reason
+STARTED event
+COMPLETED event
+Duplicate-like report
 ```
 
-## DR-003 — Sample Reports
-
-Create reports with:
-
-- Exact matches
-- Synonyms
-- Abbreviations
-- Different sentence structures
-- Missing information
-- Multiple activities in one report
-- Unmatched events
-- Delay reasons
-- Duplicate-like reports
-
-## DR-004 — Synthetic Data
-
-The hackathon demo must use synthetic/anonymized data.
-
-No confidential OIL project information should be committed to Git.
+These cases mirror the updated PRD demo dataset requirements. fileciteturn2file0L473-L483
 
 ---
 
-# 8. Non-Functional Requirements
+# 28. Testing Requirements
 
-## NFR-001 — Performance
+## TEST-001 — Unit Tests
 
-MVP target:
+Cover:
 
-```text
-Dashboard load: < 2 seconds
-Typical report extraction: < 10 seconds
-Match calculation: < 3 seconds/event
-Schedule import: < 10 seconds for demo dataset
-```
-
-These are local/demo targets.
-
----
-
-## NFR-002 — Reliability
-
-The system should gracefully handle:
-
-- Empty files
-- Invalid files
-- Malformed rows
-- Missing columns
-- AI timeouts
-- API failures
-- Database connection failures
-
----
-
-## NFR-003 — Maintainability
-
-Recommended backend modules:
-
-```text
-ingestion/
-extraction/
-normalization/
-matching/
-progress/
-analytics/
-audit/
-```
-
-Recommended frontend modules:
-
-```text
-dashboard/
-projects/
-schedule/
-reports/
-review/
-activities/
-analytics/
-shared/
-```
-
----
-
-## NFR-004 — Security
-
-The system must:
-
-- Keep secrets in `.env`
-- Never commit API keys
-- Validate uploads
-- Restrict dangerous file types
-- Sanitize filenames
-- Limit upload size
-- Avoid logging sensitive credentials
-
----
-
-## NFR-005 — Observability
-
-Backend should log:
-
-```text
-Request
-Processing stage
-Duration
-Errors
-AI failures
-Matching failures
-```
-
-Logs must not expose secrets.
-
----
-
-## NFR-006 — Reproducibility
-
-A new developer should be able to run the project using documented setup commands.
-
-Preferred:
-
-```bash
-docker compose up
-```
-
-or a clearly documented local-development equivalent.
-
----
-
-# 9. Technical Requirements
-
-## TR-001 — Frontend
-
-Required:
-
-```text
-React
-TypeScript
-Vite
-```
-
-Recommended:
-
-```text
-Tailwind CSS
-shadcn/ui
-TanStack Query
-Axios
-React Hook Form
-Zod
-Recharts
-```
-
----
-
-## TR-002 — Backend
-
-Required:
-
-```text
-Python
-FastAPI
-Pydantic
-```
-
-Recommended:
-
-```text
-SQLAlchemy
-Alembic
-```
-
----
-
-## TR-003 — Data Processing
-
-Required:
-
-```text
-pandas
-openpyxl
-```
-
-Recommended:
-
-```text
-NumPy
-PyMuPDF
-```
-
----
-
-## TR-004 — Database
-
-Required:
-
-```text
-PostgreSQL
-pgvector
-```
-
----
-
-## TR-005 — AI
-
-Required capabilities:
-
-```text
-LLM structured extraction
-Embeddings
-Semantic search
-```
-
-The model provider should remain replaceable.
-
----
-
-## TR-006 — Containerization
-
-Use:
-
-```text
-Docker
-Docker Compose
-```
-
-Recommended services:
-
-```text
-frontend
-backend
-postgres
-```
-
-Optional:
-
-```text
-nginx
-```
-
----
-
-# 10. Database Requirements
-
-The MVP should include at least:
-
-```text
-projects
-schedule_activities
-documents
-progress_events
-activity_matches
-audit_logs
-```
-
-Relationships:
-
-```text
-Project
- ├── Schedule Activities
- ├── Documents
- ├── Progress Events
- └── Audit Logs
-
-Progress Event
- └── Activity Match
-       └── Schedule Activity
-```
-
----
-
-# 11. API Requirements
-
-## Project
-
-```http
-POST   /api/projects
-GET    /api/projects
-GET    /api/projects/{id}
-PATCH  /api/projects/{id}
-```
-
-## Schedule
-
-```http
-POST /api/projects/{id}/schedule/upload
-GET  /api/projects/{id}/activities
-GET  /api/activities/{id}
-```
-
-## Documents
-
-```http
-POST /api/projects/{id}/documents
-GET  /api/projects/{id}/documents
-GET  /api/documents/{id}
-```
-
-## Extraction
-
-```http
-POST /api/documents/{id}/extract
-GET  /api/documents/{id}/events
-```
-
-## Matching
-
-```http
-POST /api/events/{id}/match
-GET  /api/events/{id}/candidates
-```
-
-## Review
-
-```http
-POST /api/events/{id}/approve
-POST /api/events/{id}/reject
-POST /api/events/{id}/override
-```
-
-## Dashboard
-
-```http
-GET /api/projects/{id}/dashboard
-GET /api/projects/{id}/delays
-GET /api/projects/{id}/unmatched
-GET /api/projects/{id}/recent-events
-```
-
----
-
-# 12. UX Requirements
-
-## UX-001 — Simple Workflow
-
-```text
-Create Project
-     ↓
-Upload Schedule
-     ↓
-Upload Report
-     ↓
-Extract
-     ↓
-Match
-     ↓
-Review
-     ↓
-Update Progress
-     ↓
-View Dashboard
-```
-
-## UX-002 — Explainability
-
-AI suggestions should show:
-
-- Confidence
-- Candidate activity
-- Matching reasons
-- Original evidence
-
-## UX-003 — Human Control
-
-The user must always be able to override an AI suggestion.
-
-## UX-004 — Error Visibility
-
-Errors must be understandable to non-technical users.
-
-Avoid raw stack traces in the UI.
-
----
-
-# 13. Matching Quality Requirements
-
-The test dataset should include at least:
-
-```text
-20 exact-match cases
-20 paraphrased cases
-10 abbreviation cases
-10 identifier-heavy cases
-10 ambiguous cases
-10 unmatched cases
-10 duplicate-like cases
-```
-
-Target MVP performance:
-
-```text
-Top-1 match accuracy: >85%
-High-confidence precision: >90%
-Extraction accuracy: >90%
-```
-
-These are internal synthetic-dataset targets, not production guarantees.
-
----
-
-# 14. Testing Requirements
-
-## Unit Tests
-
-Test:
-
-- File validation
-- Schedule parsing
-- Date normalization
+- Schedule validation
+- Date parsing
+- Normalization
 - Event schema validation
-- Confidence calculation
-- Delay calculation
+- Hybrid scoring
+- Confidence thresholds
+- Delay calculations
 - Duplicate detection
+- RLS/permission behavior where testable
 
-## Integration Tests
+## TEST-002 — Integration Test
 
-Test:
+Test the complete chain:
 
 ```text
 Upload schedule
@@ -1265,206 +1365,91 @@ Extract event
       ↓
 Match activity
       ↓
+Review
+      ↓
 Approve
       ↓
-Update activity
+Update progress
       ↓
-Dashboard
+Refresh dashboard
 ```
 
-## AI Evaluation
+## TEST-003 — AI Evaluation Set
 
-Maintain a small labeled test set with expected outputs.
+Maintain labeled examples for:
+
+```text
+Exact matches
+Paraphrases
+Abbreviations
+Ambiguous matches
+Unmatched events
+Multiple events/report
+```
 
 Measure:
 
 ```text
 Extraction precision
 Extraction recall
-Top-1 matching accuracy
-Top-3 matching recall
-False high-confidence matches
+Top-1 match accuracy
+Top-3 candidate recall
+False high-confidence match rate
 ```
 
 ---
 
-# 15. Acceptance Requirements
+# 29. Quality Targets
 
-The MVP shall be accepted when all of the following are demonstrated:
-
-### A. Schedule ingestion
+On the synthetic test set:
 
 ```text
-Upload XLSX
-→ validation
-→ schedule activities stored
-→ embeddings/index created
+Field/event extraction accuracy  > 90%
+Top-1 schedule match accuracy    > 85%
+High-confidence match precision  > 90%
 ```
 
-### B. Field report processing
-
-```text
-Upload TXT/XLSX
-→ extraction
-→ activity events generated
-```
-
-### C. AI extraction
-
-```text
-Unstructured text
-→ structured event JSON
-```
-
-### D. Schedule linking
-
-```text
-Event
-→ candidate activities
-→ confidence score
-→ suggested match
-```
-
-### E. Human review
-
-```text
-Review
-→ Accept / Reject / Override
-```
-
-### F. Progress update
-
-```text
-Approved STARTED event
-→ actual_start updated
-
-Approved COMPLETED event
-→ actual_finish updated
-```
-
-### G. Delay
-
-```text
-Planned finish
-vs
-Actual finish
-→ delay days
-```
-
-### H. Dashboard
-
-Dashboard shows:
-
-```text
-Completion
-Progress
-Delays
-Unmatched events
-Pending review
-Discipline statistics
-```
-
-### I. Traceability
-
-Every approved update can be traced back to its source report.
+These are internal MVP engineering targets, not production claims. fileciteturn2file0L529-L533
 
 ---
 
-# 16. MVP Priority Matrix
+# 30. Deployment Requirements
 
-## P0 — Critical
-
-```text
-Project creation
-Schedule upload
-Schedule parsing
-Daily report ingestion
-AI extraction
-Semantic matching
-Confidence score
-Review queue
-Activity update
-Delay calculation
-Dashboard
-Audit trail
-```
-
-## P1 — Important
+## DEP-001 — Frontend
 
 ```text
-PDF extraction
-Voice transcript input
-Duplicate detection
-Advanced search
-Delay reason analytics
+Next.js → Vercel
 ```
 
-## P2 — Optional
+## DEP-002 — n8n
 
 ```text
-OCR
-Speech-to-text
-Primavera adapter
-MS Project adapter
-Predictive delay model
-Advanced institutional-memory search
+n8n → Render
 ```
+
+or n8n Cloud if the team chooses to avoid hosting n8n.
+
+## DEP-003 — Managed Data Services
+
+```text
+Supabase → Postgres + pgvector + Auth + Storage
+```
+
+## DEP-004 — Public Demo
+
+The final demo must be reachable through a deployed Vercel URL; local-only setup is not sufficient for final demonstration. fileciteturn2file0L595-L609
 
 ---
 
-# 17. Recommended Repository Requirements
+# 31. Environment Requirements
 
-```text
-binary-beaters/
-│
-├── frontend/
-│   ├── src/
-│   ├── public/
-│   └── package.json
-│
-├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   ├── core/
-│   │   ├── db/
-│   │   ├── models/
-│   │   ├── schemas/
-│   │   ├── services/
-│   │   │   ├── ingestion/
-│   │   │   ├── extraction/
-│   │   │   ├── matching/
-│   │   │   ├── progress/
-│   │   │   └── analytics/
-│   │   └── main.py
-│   ├── tests/
-│   ├── requirements.txt
-│   └── ...
-│
-├── data/
-│   ├── sample/
-│   └── processed/
-│
-├── scripts/
-├── docs/
-├── tests/
-├── docker-compose.yml
-├── .env.example
-├── .gitignore
-├── PRD.md
-├── requirements.md
-└── README.md
-```
-
----
-
-# 18. Environment Requirements
-
-Example `.env.example`:
+Create `.env.example` containing placeholders such as:
 
 ```env
-APP_ENV=development
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
-DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/progressbridge
+SUPABASE_SERVICE_ROLE_KEY=
 
 LLM_API_KEY=
 LLM_MODEL=
@@ -1472,69 +1457,204 @@ LLM_MODEL=
 EMBEDDING_API_KEY=
 EMBEDDING_MODEL=
 
-MAX_UPLOAD_SIZE_MB=25
+N8N_WEBHOOK_BASE_URL=
 ```
 
-Secrets must never be committed.
+Rules:
+
+- Never commit real secrets.
+- Never expose the service-role key to browser code.
+- Keep server-only credentials on the server/automation side.
+- Frontend public variables must be explicitly designed for browser exposure.
 
 ---
 
-# 19. Development Rules for AI Coding Tools
+# 32. Repository Requirements
 
-AI coding assistants may be used, but generated code must follow these rules:
-
-1. Do not invent APIs or libraries without verification.
-2. Do not expose secrets.
-3. Do not change database schema without migration.
-4. Do not bypass validation.
-5. Do not silently auto-approve low-confidence matches.
-6. Keep business logic in backend services, not UI components.
-7. Use typed request/response schemas.
-8. Add tests for core matching and progress logic.
-9. Preserve source evidence.
-10. Keep implementation aligned with this requirements document.
-
----
-
-# 20. Definition of Done
-
-A feature is complete only when:
+Recommended v2 structure:
 
 ```text
-Code implemented
-     ↓
-Validation added
-     ↓
-Error handling added
-     ↓
-Test added
-     ↓
-UI integrated when required
-     ↓
-Documentation updated
-     ↓
-Feature works end-to-end
+binary-beaters/
+│
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── lib/
+│   ├── hooks/
+│   ├── types/
+│   └── ...
+│
+├── n8n/
+│   ├── workflows/
+│   └── README.md
+│
+├── supabase/
+│   ├── migrations/
+│   ├── seed.sql
+│   └── README.md
+│
+├── data/
+│   ├── sample/
+│   └── expected/
+│
+├── docs/
+│   ├── prompts/
+│   ├── architecture/
+│   └── demo/
+│
+├── tests/
+├── PRD.md
+├── requirements.md
+├── README.md
+├── .env.example
+└── .gitignore
 ```
+
+Do not introduce a separate full `backend/` service unless a concrete requirement cannot be cleanly handled by Next.js/serverless functions, Supabase Edge Functions, or n8n.
 
 ---
 
-# 21. Final MVP Requirement
+# 33. AI Coding Tool Rules
 
-The MVP must demonstrate this complete scenario:
+The team may use Claude Code, Antigravity, or similar tools.
+
+Generated code must:
+
+1. Follow the PRD and this requirements file.
+2. Avoid unnecessary new services.
+3. Use Supabase Auth instead of custom auth.
+4. Respect RLS.
+5. Never expose service-role credentials.
+6. Validate LLM output with a schema.
+7. Keep prompts in `docs/prompts/`.
+8. Preserve evidence and audit history.
+9. Never silently discard unmatched data.
+10. Include tests for core matching and progress logic.
+11. Keep AI provider integrations replaceable.
+12. Prefer small, reviewable feature branches/commits.
+
+The v2 PRD explicitly emphasizes managed services, structured AI output, hybrid matching, human review, source preservation, synthetic data, and live-demo reliability. fileciteturn2file0L580-L590
+
+---
+
+# 34. Team Implementation Requirements
+
+For a 2–4 person team:
+
+## Ingestion & Extraction
+
+Own:
 
 ```text
-1. Import an L5/L6 project schedule.
-2. Upload a field-progress report.
-3. Extract one or more execution events.
-4. Identify discipline/activity/entity/date/time.
-5. Retrieve matching schedule activities.
-6. Assign confidence.
-7. Show reasons for the suggested match.
-8. Allow planner approval or override.
-9. Update actual progress.
-10. Calculate delay.
-11. Reflect changes in the dashboard.
-12. Trace the update back to the original source.
+n8n workflows
+file parsing
+LLM extraction
+structured validation
+prompt templates
 ```
 
-This end-to-end path is the primary implementation requirement for SIH 26122.
+## Matching & Data
+
+Own:
+
+```text
+Supabase schema
+pgvector
+hybrid scoring
+RLS
+Audit trail
+```
+
+## Frontend & Time Agent
+
+Own:
+
+```text
+Next.js
+dashboard
+upload UI
+review UI
+activity details
+charts
+time agent
+```
+
+## Integration & Demo
+
+Optional fourth person:
+
+```text
+synthetic data
+deployment
+end-to-end testing
+demo script
+README/documentation
+```
+
+For a 2-person team, combine the roles as specified by the v2 PRD. fileciteturn2file0L564-L576
+
+---
+
+# 35. Acceptance Criteria
+
+The MVP is accepted only when this complete scenario works:
+
+```text
+1. User signs in.
+2. User creates/opens a project.
+3. Planner uploads schedule.xlsx.
+4. System validates schedule.
+5. System indexes L5/L6 activities.
+6. Supervisor uploads a daily report or submits a time-agent message.
+7. n8n processes the input.
+8. LLM extracts one or more structured events.
+9. Entities are normalized.
+10. pgvector retrieves candidate activities.
+11. Hybrid scoring generates confidence.
+12. Medium/low-confidence items enter review.
+13. Planner approves or overrides the match.
+14. Actual status/dates update in Supabase.
+15. Delay is calculated.
+16. Dashboard refreshes.
+17. Delayed and unmatched items are visible.
+18. Original source/evidence is accessible.
+19. Audit history is visible.
+20. The complete flow works from the deployed Vercel frontend.
+```
+
+These steps reflect the updated PRD's acceptance flow and Definition of Done. fileciteturn2file0L537-L548
+
+---
+
+# 36. Definition of Done
+
+The project is ready for SIH demonstration when:
+
+- Vercel frontend is deployed.
+- Supabase is configured.
+- Supabase migrations/seed data are committed.
+- Auth works.
+- RLS is verified.
+- Schedule upload works.
+- Required report formats work.
+- n8n processes reports.
+- AI extraction works on the prepared dataset.
+- pgvector matching works.
+- Confidence thresholds work.
+- Review workflow works.
+- Progress updates appear on the dashboard.
+- Dashboard KPIs are meaningful.
+- Audit history is visible.
+- At least one difficult/unmatched case is demonstrated live.
+- `.gitignore` and `.env.example` are correct.
+- README includes setup, architecture, sample data, and demo instructions.
+
+The v2 PRD specifically requires a deployed Vercel frontend, quick demo-data loading, working n8n processing, review, immediate dashboard updates, audit history, a difficult live example, and secret hygiene. fileciteturn2file0L595-L609
+
+---
+
+# 37. Final MVP Requirement
+
+> **Turn “what the site team said happened” into “which planned activity actually happened, when, and with what confidence.”**
+
+The implementation must optimize for one reliable, explainable end-to-end workflow rather than broad but shallow feature coverage. fileciteturn2file0L613-L619
