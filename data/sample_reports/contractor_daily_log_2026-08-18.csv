@@ -1,0 +1,11 @@
+date,crew,activity,status_note
+2026-08-18,Civil QA/QC Lab,Took Schmidt rebound hammer readings and UPV sound velocity scans on the compressor house columns,Uniform compressive strength indicated across all 12 test locations; no subsurface voids.
+2026-08-18,Steel Rigging Gang,Stood up heavy steel H-columns with 70-ton mobile crane and anchored with temporary wire rope guys on Train A,Columns set plumb to within 3mm over 12m vertical height.
+2026-08-18,Steel Bolting Gang,Tensioned high-strength structural bolts on column base plates and moment connections around vessel V-201,Direct tension indicators (DTIs) verified flattened to spec.
+2026-08-18,Mechanical Piping Crew 2,"Mounted lube oil skid console, ran stainless steel return lines and tied in the nitrogen accumulator vessel",Tubing runs clamped to structural channels; pressure relief valve tagged.
+2026-08-18,Piping Support Gang,Hung variable spring supports beneath fin-fan header and adjusted turnbuckles to cold design preset position,Spring travel pins pulled and locked in cold-load position.
+2026-08-18,Specialized Flushing Crew,Circulated alkaline degreaser and citric acid chemical pickle solution through main lube oil piping loops,Passivation completed; millipore filter membrane test passed clean.
+2026-08-18,Electrical Fireproofing,Packed intumescent firestop pillows and compound into cable tray wall openings between transformer bay and switchroom,2-hour fire rated seal completed and certified.
+2026-08-18,Electrical Termination Crew,Landed incoming power feeds and landed control wires onto terminal blocks inside MCC-B breaker cubicles,All terminations tug-tested and labeled per schematic diagram.
+2026-08-18,DC Power Systems Crew,"Assembled steel battery stands, placed individual 2V stationary lead-acid cells, and torqued inter-cell bus links",Applied anti-corrosion grease on lead terminal posts; open-circuit bank voltage 126V DC.
+2026-08-18,Relay Testing Specialists,Injected secondary current using Omicron test kit to calibrate phase overcurrent and earth fault protection relays,Trip curves verified; breaker trip timing recorded at 38 milliseconds.

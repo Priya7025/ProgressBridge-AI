@@ -1,0 +1,25 @@
+PROGRESSBRIDGE AI - SHIFT LOG
+DISCIPLINE: Mechanical, Equipment Rigging & Pressure Piping
+DATE: 2026-08-15 | SHIFT: Day (07:00 - 18:30)
+FACILITY: Onshore Gas Terminal - Units 10 & 20
+REPORTING ENGINEER: Vikram Sengupta, Lead Piping & Rigging Supervisor
+
+1. HEAVY EQUIPMENT RIGGING:
+- Heat Exchanger Setting: Mobilized 150-ton mobile crane at Process Train A. Successfully lifted the horizontal shell-and-tube exchanger and set it dead center onto its structural saddle foundation at the HP separator unit.
+- Crude Pump Baseplate: Placed the multistage charge pump skid onto the inertia block. Completed initial rough leveling with machinist shims; ready for laser alignment crew tomorrow.
+
+2. SPOOL FABRICATION & PIPING ERECTION:
+- Fuel Gas Skid (12" CS Spool): Crane hoisted the heavy 12-inch schedule 80 carbon steel spool into position on the fuel gas treatment skid. Secured temporarily with drift pins and transit brackets.
+- Instrument Air SS Piping: Welders completed fit-up on the 8-inch 316L stainless line coming off the instrument air package. Tack-welded 4 joints under argon purge backing.
+- HP Gas Header Welding: Two certified 6G pipe welders completed the TIG root pass followed by SMAW hot and cap passes on the high pressure header tie-in. Joint IDs: W-HP-041 and W-HP-042. Visual inspection passed cleanly.
+- Cooling Water Valve Installation: Installed three Class 600 isolation valves (two gate, one check) at the cooling water pumps. Replaced all temporary shipping seals with brand new graphite-filled spiral wound gaskets.
+- Flange Torquing: Bolted up the 16-inch nozzle connection at the effluent clarifier package. Applied cross-pattern tightening in 3 stages up to 480 N-m in strict accordance with PCC-1 guidelines.
+- Pipe Support Shoes: Installed 14 Teflon/PTFE sliding guide shoes under the incoming slug catcher lines along the lower rack.
+
+3. PRESSURE TESTING & LAGGING:
+- Hydrotest: Successfully pressurized the crude manifold piping spool assembly to 150% of rated design pressure (36.5 bar). Held hold period for 2 hours with zero pressure drop. Dewatered and blown dry with utility air.
+- Steam Line Insulation: Thermal insulators fitted preformed rockwool / mineral wool blankets over 30 meters of high-temp overhead steam pipe near the compressor building.
+
+REMARKS / CONSTRAINTS:
+- No crane breakdowns or rigging safety concerns.
+- Third-party NDT radiographer booked for 20:00 tonight to shoot films on the HP gas header weld joints.
