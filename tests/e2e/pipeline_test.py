@@ -170,7 +170,7 @@ class PipelineTester:
             if row_count >= 750:
                 self.stage_results[stage_name] = {
                     "status": "PASSED",
-                    "details": f"Confirmed {row_count} activities seeded across Civil, Mechanical, and Electrical."
+                    "details": f"Confirmed {row_count} activities seeded across 6 disciplines (Civil, Mechanical, Electrical, Piping, Instrumentation, HSE)."
                 }
                 self.log(stage_name, self.stage_results[stage_name]["details"], status="PASSED")
                 return True

@@ -41,7 +41,7 @@ def generate_seed_sql():
     sql_lines.append("-- ===========================================================================")
     sql_lines.append("-- ProgressBridge AI (SIH26122) - Database Seed Script")
     sql_lines.append("-- Target Table: public.schedule_activities")
-    sql_lines.append(f"-- Total Seed Rows: {len(rows)} activities across Civil, Mechanical, Electrical")
+    sql_lines.append(f"-- Total Seed Rows: {len(rows)} activities across Civil, Mechanical, Electrical, Piping, Instrumentation, HSE")
     sql_lines.append("--")
     sql_lines.append("-- Schema Mapping / Resolution:")
     sql_lines.append("--   CSV: planned_start_date -> DB: planned_start (date)")
@@ -82,7 +82,7 @@ ON CONFLICT (id) DO UPDATE SET
 """)
 
     # 2. Insert schedule activities in batches of 50
-    sql_lines.append("-- 2. Seed Schedule Activities (750 L5/L6 Activities)")
+    sql_lines.append(f"-- 2. Seed Schedule Activities ({len(rows)} L5/L6 Activities across 6 Disciplines)")
     sql_lines.append("-- Note: embedding column is deliberately left NULL for Member 2 to populate via embedding model.\n")
 
     batch_size = 50

@@ -2,9 +2,12 @@
 Generate realistic sample daily reports, spreadsheets, and ground truth mapping
 for ProgressBridge AI semantic schedule matching validation.
 
-Output directories:
-- supabase/seed/sample_reports/
-- data/sample_reports/
+Outputs:
+- supabase/seed/sample_reports/ & data/sample_reports/
+- 6 text reports (.txt) covering Civil, Mechanical, Electrical, Piping, Instrumentation, HSE
+- 2 spreadsheet logs (.csv)
+- ground_truth.json covering all 10 PRD Section 21 intentionally difficult test cases
+  and PRD Section 22 "PIP-2458 Erect Line 24-XX" headline demo case.
 """
 
 import csv
@@ -25,7 +28,7 @@ DATA_REPORTS.mkdir(parents=True, exist_ok=True)
 # Report 1: Civil & Structural Field Diary
 REPORT_1_FILENAME = "daily_site_report_civil_2026-08-14.txt"
 REPORT_1_TEXT = """PROGRESSBRIDGE AI - SITE PROGRESS REPORT
-PROJECT: Onshore Terminal Expansion - Package B
+PROJECT: OIL Demo Refinery Expansion
 DATE: 2026-08-14
 REPORT TYPE: Daily Field Diary - Civil & Structural Infrastructure
 PREPARED BY: Rajesh K., Lead Civil Field Supervisor
@@ -70,7 +73,7 @@ REPORT_2_FILENAME = "daily_shift_log_mechanical_2026-08-15.txt"
 REPORT_2_TEXT = """PROGRESSBRIDGE AI - SHIFT LOG
 DISCIPLINE: Mechanical, Equipment Rigging & Pressure Piping
 DATE: 2026-08-15 | SHIFT: Day (07:00 - 18:30)
-FACILITY: Onshore Gas Terminal - Units 10 & 20
+FACILITY: OIL Demo Refinery Expansion - Process Area
 REPORTING SUPERVISOR: Vikram Sengupta, Lead Piping & Rigging Supervisor
 
 1. HEAVY EQUIPMENT RIGGING:
@@ -188,6 +191,71 @@ SIGN-OFF:
 Marcus Vance (Lead Coordinator)
 """
 
+# Report 5: Piping & PRD Demo Cases Report (Sections 21 & 22)
+REPORT_5_FILENAME = "daily_site_report_piping_2026-08-20.txt"
+REPORT_5_TEXT = """PROGRESSBRIDGE AI - SITE PROGRESS REPORT
+PROJECT: OIL Demo Refinery Expansion
+DATE: 2026-08-20
+REPORT TYPE: Daily Field Diary - Piping & Mechanical Erection
+PREPARED BY: Somnath Mukherjee, Lead Piping Construction Engineer
+WEATHER: Sunny, 32°C, wind 8 km/h
+
+SUMMARY OF FIELD ACTIVITIES:
+1. Line 24-XX Spool Erection (PRD Demo Headline Case - Start Event):
+   24-XX spool erection started at 10:30 AM in North Unit. Rigging crew positioned the 8-inch carbon steel line onto structural rack supports.
+
+2. Line 24-XX Erection Completion (PRD Demo Headline Case - Completion Event):
+   Line 24-XX erection completed on 31-Aug. Final alignment and drift pin removal checked off by QA inspector.
+
+3. Exact Baseline Match Test Case:
+   Erect Line 24-XX
+
+4. Abbreviation & Field Jargon Case:
+   PWHT & NDT on CS line 18-B completed. Certified tech recorded 12-pt thermal charts and 100% PAUT on 8 butt joints at South Unit.
+
+5. Ambiguous Multiple Match Case:
+   Hydrotesting process line in Train A completed with calibrated gauge holding 36 bar. (Ambiguous: Multiple hydrotest packages in Train A without specific line ID).
+
+6. Delay Reason Case:
+   Piping erection halted on Line 18-B in South Unit due to 4-day delay in receiving Class 600 isolation check valve from vendor.
+
+7. Flange Torque Tightening:
+   Cross-pattern torque tightening of Class 300/600 raised-face flanges with spiral gaskets completed at Crude Tank Farm Loading Manifold (Line 24-TF-502).
+
+UNSCHEDULED / NON-BASELINE ENTRIES:
+8. Site Office AC Unloading:
+   Piping crew assisted logistics team in unloading 3 wooden crates of office air conditioners at the main administrative gate.
+"""
+
+# Report 6: Instrumentation & HSE Field Diary
+REPORT_6_FILENAME = "daily_site_report_inst_hse_2026-08-21.txt"
+REPORT_6_TEXT = """PROGRESSBRIDGE AI - SITE PROGRESS REPORT
+PROJECT: OIL Demo Refinery Expansion
+DATE: 2026-08-21
+REPORT TYPE: Daily Field Diary - Instrumentation, Control & HSE Safety
+PREPARED BY: Priya Nair, Lead Instrumentation & Safety Engineer
+
+1. INSTRUMENTATION & CONTROLS:
+- Smart Transmitter Calibration:
+  Field 5-point calibration and 4-20mA loop verification of smart pressure transmitters completed at Process Train A Instrument Stanchion Corridor (INST-TRAIN-A).
+- Marshalling Cabinet Wiring:
+  Glanding, ferrule dressing, and landing shielded twisted pair cables on DCS terminal strips inside Central Control Room Marshalling Cabinets (DCS-MARSH-01).
+- Flame Detector Alignment:
+  Installing multi-spectrum IR3 flame sensors and aiming optical field of view across plant perimeter (FGS-DET-01).
+
+2. HSE & SAFETY SYSTEMS:
+- Firewater Hydrant Flow Testing:
+  Bolting up cast-iron wet barrel fire hydrants and measuring discharge flow and static head along Plant Firewater Ring Main Hydrant Post Grid (HYDRANT-POST-01).
+- Radiography Radiation Boundary Sweep:
+  Surveyed radiation dose rates and set up physical barricading with flashing beacons for gamma NDE radiography (NDT-RAD-EXCL).
+- Safety Shower Commissioning:
+  Connecting potable supply to combination safety shower/eyewash and testing audio-visual flow alarm switches (SS-EW-01).
+
+3. UNSCHEDULED / ADMINISTRATIVE TASK:
+- Safety Committee Monthly Tea Meeting:
+  HSE team organized a 45-minute monthly safety committee tea refreshment session in the temporary canteen shed.
+"""
+
 # -------------------------------------------------------------
 # 2. Spreadsheet Definitions (CSV)
 # -------------------------------------------------------------
@@ -198,55 +266,55 @@ SPREADSHEET_1_ROWS = [
         "date": "2026-08-17",
         "location_note": "Tank Farm East - Crude Tank 01",
         "activity_note": "Tamped and compacted backfill gravel in 200mm layers around Tank 01 dike retaining walls (BUND-TK-01)",
-        "status_note": "Layers 3 and 4 completed; soil testing passed with 97% compaction."
+        "status_note": "Layers 3 and 4 completed; soil testing passed with 97% compaction.",
     },
     {
         "date": "2026-08-17",
         "location_note": "Compressor House Bay 1-3",
         "activity_note": "Assembled plywood shuttering and heavy steel waler supports for deep foundation pedestals (BLDG-COMP-01)",
-        "status_note": "Forms locked in place; ready for pre-pour dimensional inspection."
+        "status_note": "Forms locked in place; ready for pre-pour dimensional inspection.",
     },
     {
         "date": "2026-08-17",
         "location_note": "Process Train A - Cracker Area",
         "activity_note": "Placed ribbed rubber waterstop profiles across construction cold joints on Train A cracker slab (FND-TK-101)",
-        "status_note": "Joints fully prepped and secured prior to adjoining slab pour."
+        "status_note": "Joints fully prepped and secured prior to adjoining slab pour.",
     },
     {
         "date": "2026-08-17",
         "location_note": "Main Pipe Rack Corridor - Grid A to G",
         "activity_note": "Laid 8-inch solid cement block walls with horizontal bond beams at pipe rack support shelter (STR-PR-101)",
-        "status_note": "Reached 2.4m height; mortar curing under damp burlap."
+        "status_note": "Reached 2.4m height; mortar curing under damp burlap.",
     },
     {
         "date": "2026-08-17",
         "location_note": "Process Train A - Booster Compression Standby",
         "activity_note": "Set up dual laser alignment sensors on compressor-motor coupling and dialed in hot-alignment offsets for K-102B",
-        "status_note": "Angular misalignment dialed down to 0.03mm, well within tolerance."
+        "status_note": "Angular misalignment dialed down to 0.03mm, well within tolerance.",
     },
     {
         "date": "2026-08-17",
         "location_note": "Process Train B - LP Compression Bay",
         "activity_note": "Checked soft-foot on pump feet using dial gauges and inserted 0.2mm precision SS shims under K-202A",
-        "status_note": "Soft-foot reduced to below 0.025mm; foundation hold-down bolts tightened."
+        "status_note": "Soft-foot reduced to below 0.025mm; foundation hold-down bolts tightened.",
     },
     {
         "date": "2026-08-17",
         "location_note": "Heat Exchanger Battery - South",
         "activity_note": "Carried out X-ray radiography and magnetic particle inspection across 14 field butt welds on E-201A/B piping",
-        "status_note": "13 welds accepted, 1 root lack-of-fusion marked for repair."
+        "status_note": "13 welds accepted, 1 root lack-of-fusion marked for repair.",
     },
     {
         "date": "2026-08-17",
         "location_note": "Air Cooled Fin-Fan Condenser Deck",
         "activity_note": "Pressurized fin-fan cooler coils (AC-101) with nitrogen gas to 7 bar and brush-tested all threaded connections with Snoop soap liquid",
-        "status_note": "Zero bubbling observed; pneumatic test package signed off."
+        "status_note": "Zero bubbling observed; pneumatic test package signed off.",
     },
     {
         "date": "2026-08-17",
         "location_note": "South Gate Guard House",
         "activity_note": "Assembled temporary wooden scaffolding and privacy screens for visiting client delegation at south perimeter gate",
-        "status_note": "Ad-hoc task requested by client PM; not on project baseline schedule."
+        "status_note": "Ad-hoc task requested by client PM; not on project baseline schedule.",
     },
 ]
 
@@ -256,61 +324,67 @@ SPREADSHEET_2_ROWS = [
         "date": "2026-08-18",
         "location_note": "Compressor House Bay 4-6",
         "activity_note": "Took Schmidt rebound hammer readings and UPV sound velocity scans on the compressor house columns (BLDG-COMP-02)",
-        "status_note": "Uniform compressive strength indicated across all 12 test locations; no subsurface voids."
+        "status_note": "Uniform compressive strength indicated across all 12 test locations; no subsurface voids.",
     },
     {
         "date": "2026-08-18",
         "location_note": "Process Train A - Cracker Area",
         "activity_note": "Stood up heavy steel H-columns with 70-ton mobile crane and anchored with temporary wire rope guys on Train A (FND-TK-101)",
-        "status_note": "Columns set plumb to within 3mm over 12m vertical height."
+        "status_note": "Columns set plumb to within 3mm over 12m vertical height.",
     },
     {
         "date": "2026-08-18",
         "location_note": "Process Train B - Reforming Unit",
         "activity_note": "Tensioned high-strength structural bolts on column base plates and moment connections around vessel FND-V-201",
-        "status_note": "Direct tension indicators (DTIs) verified flattened to spec."
+        "status_note": "Direct tension indicators (DTIs) verified flattened to spec.",
     },
     {
         "date": "2026-08-18",
         "location_note": "Crude Charge Pump Station",
         "activity_note": "Mounted lube oil skid console, ran stainless steel return lines and tied in the nitrogen accumulator vessel for P-101A",
-        "status_note": "Tubing runs clamped to structural channels; pressure relief valve tagged."
+        "status_note": "Tubing runs clamped to structural channels; pressure relief valve tagged.",
     },
     {
         "date": "2026-08-18",
         "location_note": "Fuel Gas Conditioning Skid",
         "activity_note": "Hung variable spring supports beneath fuel gas header (SKID-FG-01) and adjusted turnbuckles to cold design preset position",
-        "status_note": "Spring travel pins pulled and locked in cold-load position."
+        "status_note": "Spring travel pins pulled and locked in cold-load position.",
     },
     {
         "date": "2026-08-18",
         "location_note": "Overhead Steam Distribution Header",
         "activity_note": "Circulated alkaline degreaser and citric acid chemical pickle solution through main lube oil piping loops on HDR-STM-01",
-        "status_note": "Passivation completed; millipore filter membrane test passed clean."
+        "status_note": "Passivation completed; millipore filter membrane test passed clean.",
     },
     {
         "date": "2026-08-18",
         "location_note": "Outdoor Transformer Yard - TR-01 Bay",
         "activity_note": "Packed intumescent firestop pillows and compound into cable tray wall openings between transformer bay and switchroom (XFMR-33-11KV-01)",
-        "status_note": "2-hour fire rated seal completed and certified."
+        "status_note": "2-hour fire rated seal completed and certified.",
     },
     {
         "date": "2026-08-18",
         "location_note": "Process Train B - Cable Trench Corridor",
-        "activity_note": "Landed incoming power feeds and landed control wires onto terminal blocks inside MCC-B breaker cubicles for TRNCH-ELEC-02",
-        "status_note": "All terminations tug-tested and labeled per schematic diagram."
+        "activity_note": "Morning Shift: Commenced winched pulling of 33kV XLPE insulated armored power feeder into duct bank at TRNCH-ELEC-02",
+        "status_note": "First 120 meters pulled without snag; tension recorder within safe pulling limits.",
+    },
+    {
+        "date": "2026-08-18",
+        "location_note": "Process Train B - Cable Trench Corridor",
+        "activity_note": "Evening Shift: Continued pulling 33kV XLPE insulated armored power feeder into duct bank at TRNCH-ELEC-02 (Duplicate-like log)",
+        "status_note": "Second pull segment completed; total 240 meters landed in trench corridor.",
     },
     {
         "date": "2026-08-18",
         "location_note": "Plant High-Mast Yard Lighting Towers",
         "activity_note": "Assembled steel battery stands, placed individual 2V stationary lead-acid cells, and torqued inter-cell bus links (LIGHT-MAST-01)",
-        "status_note": "Applied anti-corrosion grease on lead terminal posts; open-circuit bank voltage 126V DC."
+        "status_note": "Applied anti-corrosion grease on lead terminal posts; open-circuit bank voltage 126V DC.",
     },
     {
         "date": "2026-08-18",
         "location_note": "Main Substation 33kV Switchgear Room",
         "activity_note": "Injected secondary current using Omicron test kit to calibrate phase overcurrent and earth fault protection relays (SWG-33KV-01)",
-        "status_note": "Trip curves verified; breaker trip timing recorded at 38 milliseconds."
+        "status_note": "Trip curves verified; breaker trip timing recorded at 38 milliseconds.",
     },
 ]
 
@@ -322,14 +396,28 @@ GROUND_TRUTH_DATA = {
     "metadata": {
         "dataset_name": "ProgressBridge AI Evaluation Benchmark",
         "description": "Ground truth mappings linking field daily reports and progress spreadsheets to L5/L6 baseline schedule activities",
-        "total_files": 6,
-        "total_entries": 47,
-        "matched_entries": 42,
-        "unmatched_entries": 5,
-        "disciplines": ["Civil", "Mechanical", "Electrical"],
+        "total_files": 8,
+        "total_entries": 62,
+        "matched_entries": 55,
+        "unmatched_entries": 7,
+        "disciplines": ["Civil", "Mechanical", "Electrical", "Piping", "Instrumentation", "HSE"],
+        "difficult_cases_coverage": {
+            "exact_wording_match": True,
+            "different_wording": True,
+            "abbreviations": True,
+            "missing_schedule_match": True,
+            "multiple_possible_matches": True,
+            "different_disciplines": True,
+            "delay_reason_present": True,
+            "start_event": True,
+            "completion_event": True,
+            "duplicate_like_reports": True,
+        },
     },
     "entries": [
-        # Report 1 entries
+        # ---------------------------------------------------------
+        # Report 1 entries (Civil)
+        # ---------------------------------------------------------
         {
             "source_file": "daily_site_report_civil_2026-08-14.txt",
             "entry_index": 1,
@@ -338,8 +426,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0002",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to excavation for foundation and storm drainage at Process Train B / FND-V-201."
+            "notes": "Maps to excavation for foundation and storm drainage at Process Train B / FND-V-201.",
         },
         {
             "source_file": "daily_site_report_civil_2026-08-14.txt",
@@ -349,8 +438,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0003",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to subgrade soil compaction and in-situ moisture-density nuclear testing at STR-PR-101."
+            "notes": "Maps to subgrade soil compaction and in-situ moisture-density nuclear testing at STR-PR-101.",
         },
         {
             "source_file": "daily_site_report_civil_2026-08-14.txt",
@@ -360,8 +450,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0005",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to aggregate base course / slope stone work at Cooling Tower Basin Area (CT-BASIN-01)."
+            "notes": "Maps to aggregate base course / slope stone work at Cooling Tower Basin Area (CT-BASIN-01).",
         },
         {
             "source_file": "daily_site_report_civil_2026-08-14.txt",
@@ -371,8 +462,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0008",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to concrete foundation / blinding works at Compressor House Bay 1-3 (BLDG-COMP-01)."
+            "notes": "Maps to concrete foundation / blinding works at Compressor House Bay 1-3 (BLDG-COMP-01).",
         },
         {
             "source_file": "daily_site_report_civil_2026-08-14.txt",
@@ -382,8 +474,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0012",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to rebar cage and formwork at Central Control Room Building (BLDG-CCR)."
+            "notes": "Maps to rebar cage and formwork at Central Control Room Building (BLDG-CCR).",
         },
         {
             "source_file": "daily_site_report_civil_2026-08-14.txt",
@@ -393,8 +486,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0013",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to anchor bolts & rebar fixing at Effluent Treatment Plant Basin (ETP-BASIN-01)."
+            "notes": "Maps to anchor bolts & rebar fixing at Effluent Treatment Plant Basin (ETP-BASIN-01).",
         },
         {
             "source_file": "daily_site_report_civil_2026-08-14.txt",
@@ -404,8 +498,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0020",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "significant_rephrase",
-            "notes": "Maps to concrete testing / slab works at Demineralized Water Storage Area (FND-DM-TK01)."
+            "notes": "Maps to concrete testing / slab works at Demineralized Water Storage Area (FND-DM-TK01).",
         },
         {
             "source_file": "daily_site_report_civil_2026-08-14.txt",
@@ -415,8 +510,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0028",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to structural steel bolting and grouting at Main Pipe Rack Corridor (STR-PR-101)."
+            "notes": "Maps to structural steel bolting and grouting at Main Pipe Rack Corridor (STR-PR-101).",
         },
         {
             "source_file": "daily_site_report_civil_2026-08-14.txt",
@@ -426,11 +522,14 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "unmatched",
             "is_matched": False,
+            "difficult_case_category": "missing_schedule_match",
             "rephrasing_type": "deliberate_non_match",
-            "notes": "Deliberate non-match: non-project vehicle maintenance to test exception handling & review queue."
+            "notes": "Deliberate non-match: non-project vehicle maintenance to test exception handling & review queue.",
         },
 
-        # Report 2 entries
+        # ---------------------------------------------------------
+        # Report 2 entries (Mechanical)
+        # ---------------------------------------------------------
         {
             "source_file": "daily_shift_log_mechanical_2026-08-15.txt",
             "entry_index": 1,
@@ -439,8 +538,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0001",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Rig, crane hoist and set horizontal shell-and-tube heat exchanger onto saddle supports at V-101."
+            "notes": "Maps to Rig, crane hoist and set horizontal shell-and-tube heat exchanger onto saddle supports at V-101.",
         },
         {
             "source_file": "daily_shift_log_mechanical_2026-08-15.txt",
@@ -450,8 +550,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0002",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Position centrifugal multi-stage crude pump and rough-align baseplate at K-102A."
+            "notes": "Maps to Position centrifugal multi-stage crude pump and rough-align baseplate at K-102A.",
         },
         {
             "source_file": "daily_shift_log_mechanical_2026-08-15.txt",
@@ -461,8 +562,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0012",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Rig and erect pre-fabricated 12-inch carbon steel schedule 80 pipe spools at PR-TIER-02."
+            "notes": "Maps to Rig and erect pre-fabricated 12-inch carbon steel schedule 80 pipe spools at PR-TIER-02.",
         },
         {
             "source_file": "daily_shift_log_mechanical_2026-08-15.txt",
@@ -472,8 +574,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0013",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Fit-up and full penetration butt weld on 8-inch stainless steel process line at E-201A/B."
+            "notes": "Maps to Fit-up and full penetration butt weld on 8-inch stainless steel process line at E-201A/B.",
         },
         {
             "source_file": "daily_shift_log_mechanical_2026-08-15.txt",
@@ -483,8 +586,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0014",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to GTAW root welding and low-hydrogen SMAW fill/cap on HP gas header at E-202A/B."
+            "notes": "Maps to GTAW root welding and low-hydrogen SMAW fill/cap on HP gas header at E-202A/B.",
         },
         {
             "source_file": "daily_shift_log_mechanical_2026-08-15.txt",
@@ -494,8 +598,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0009",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "significant_rephrase",
-            "notes": "Maps to valve installation & assembly at Cooling Water Circulation Station (CW-PUMP-02)."
+            "notes": "Maps to valve installation & assembly at Cooling Water Circulation Station (CW-PUMP-02).",
         },
         {
             "source_file": "daily_shift_log_mechanical_2026-08-15.txt",
@@ -505,8 +610,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0016",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Controlled cross-pattern torque tightening on 16-inch flange connection (ASME PCC-1) at MANIFOLD-TF01."
+            "notes": "Maps to Controlled cross-pattern torque tightening on 16-inch flange connection (ASME PCC-1) at MANIFOLD-TF01.",
         },
         {
             "source_file": "daily_shift_log_mechanical_2026-08-15.txt",
@@ -516,8 +622,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0018",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Mount PTFE teflon sliding pipe shoes and structural guide clamps at SKID-IA-01."
+            "notes": "Maps to Mount PTFE teflon sliding pipe shoes and structural guide clamps at SKID-IA-01.",
         },
         {
             "source_file": "daily_shift_log_mechanical_2026-08-15.txt",
@@ -527,8 +634,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0024",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "significant_rephrase",
-            "notes": "Maps to Hydrostatic pressure test on piping spool assembly at 1.5x design pressure (HDR-STM-01 / manifold)."
+            "notes": "Maps to Hydrostatic pressure test on piping spool assembly at 1.5x design pressure.",
         },
         {
             "source_file": "daily_shift_log_mechanical_2026-08-15.txt",
@@ -538,8 +646,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0028",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Fitting high-density rockwool / mineral wool insulation shells on steam headers."
+            "notes": "Maps to Fitting high-density rockwool / mineral wool insulation shells on steam headers.",
         },
         {
             "source_file": "daily_shift_log_mechanical_2026-08-15.txt",
@@ -549,11 +658,14 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "unmatched",
             "is_matched": False,
+            "difficult_case_category": "missing_schedule_match",
             "rephrasing_type": "deliberate_non_match",
-            "notes": "Deliberate non-match: laydown yard container relocation."
+            "notes": "Deliberate non-match: laydown yard container relocation.",
         },
 
-        # Report 3 entries
+        # ---------------------------------------------------------
+        # Report 3 entries (Electrical)
+        # ---------------------------------------------------------
         {
             "source_file": "site_diary_electrical_2026-08-16.txt",
             "entry_index": 1,
@@ -562,8 +674,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0001",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Install heavy-duty perforated galvanized steel cable trays (450mm width) at SWG-33KV-01."
+            "notes": "Maps to Install heavy-duty perforated galvanized steel cable trays (450mm width) at SWG-33KV-01.",
         },
         {
             "source_file": "site_diary_electrical_2026-08-16.txt",
@@ -573,8 +686,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0002",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Erect vertical ladder cable trays and weld structural support brackets at SWG-11KV-01."
+            "notes": "Maps to Erect vertical ladder cable trays and weld structural support brackets at SWG-11KV-01.",
         },
         {
             "source_file": "site_diary_electrical_2026-08-16.txt",
@@ -584,8 +698,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0003",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Bend, thread and mount rigid galvanized steel (RGS) conduit runs at MCC-TRAIN-A."
+            "notes": "Maps to Bend, thread and mount rigid galvanized steel (RGS) conduit runs at MCC-TRAIN-A.",
         },
         {
             "source_file": "site_diary_electrical_2026-08-16.txt",
@@ -595,8 +710,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0004",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Install explosion-proof Class 1 Div 2 junction boxes and Chico compound seal fittings at MCC-TRAIN-B."
+            "notes": "Maps to Install explosion-proof Class 1 Div 2 junction boxes and Chico compound seal fittings at MCC-TRAIN-B.",
         },
         {
             "source_file": "site_diary_electrical_2026-08-16.txt",
@@ -606,8 +722,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0007",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "significant_rephrase",
-            "notes": "Maps to Pulling 33kV 3-core 240 sq mm MV armored cable through concrete duct bank at UPS-BAT-ROOM."
+            "notes": "Maps to Pulling 33kV 3-core 240 sq mm MV armored cable through concrete duct bank at UPS-BAT-ROOM.",
         },
         {
             "source_file": "site_diary_electrical_2026-08-16.txt",
@@ -617,8 +734,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0011",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Crimp tinned copper lugs onto power conductors using hydraulic crimping tool at TRNCH-ELEC-01."
+            "notes": "Maps to Crimp tinned copper lugs onto power conductors using hydraulic crimping tool at TRNCH-ELEC-01.",
         },
         {
             "source_file": "site_diary_electrical_2026-08-16.txt",
@@ -628,8 +746,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0013",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Making off 33kV high voltage stress cone cold shrink terminations on XLPE cable at TRAY-RACK-01."
+            "notes": "Maps to Making off 33kV high voltage stress cone cold shrink terminations on XLPE cable at TRAY-RACK-01.",
         },
         {
             "source_file": "site_diary_electrical_2026-08-16.txt",
@@ -639,8 +758,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0023",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Drive copper-bonded ground rods and measure individual soil earth resistance at ESD-PNL-01."
+            "notes": "Maps to Drive copper-bonded ground rods and measure individual soil earth resistance at ESD-PNL-01.",
         },
         {
             "source_file": "site_diary_electrical_2026-08-16.txt",
@@ -650,8 +770,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0024",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Cadweld exothermic bond 50x6mm bare copper ground tape to plant grounding grid at FGS-PNL-01."
+            "notes": "Maps to Cadweld exothermic bond 50x6mm bare copper ground tape to plant grounding grid at FGS-PNL-01.",
         },
         {
             "source_file": "site_diary_electrical_2026-08-16.txt",
@@ -661,11 +782,14 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "unmatched",
             "is_matched": False,
+            "difficult_case_category": "missing_schedule_match",
             "rephrasing_type": "deliberate_non_match",
-            "notes": "Deliberate non-match: unbudgeted storm water puddle pumping in temporary yard."
+            "notes": "Deliberate non-match: unbudgeted storm water puddle pumping in temporary yard.",
         },
 
-        # Report 4 entries
+        # ---------------------------------------------------------
+        # Report 4 entries (Multi-Discipline)
+        # ---------------------------------------------------------
         {
             "source_file": "daily_site_report_multidiscipline_2026-08-19.txt",
             "entry_index": 1,
@@ -674,8 +798,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0025",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Install precast concrete cable trench troughs and removable checkered covers at FND-EDG-01."
+            "notes": "Maps to Install precast concrete cable trench troughs and removable checkered covers at FND-EDG-01.",
         },
         {
             "source_file": "daily_site_report_multidiscipline_2026-08-19.txt",
@@ -685,8 +810,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0036",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Bituminous waterproofing membrane application on substation flat roof slab."
+            "notes": "Maps to Bituminous waterproofing membrane application on substation flat roof slab.",
         },
         {
             "source_file": "daily_site_report_multidiscipline_2026-08-19.txt",
@@ -696,8 +822,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0008",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Rig and position modular chemical injection skid onto anchor foundations."
+            "notes": "Maps to Rig and position modular chemical injection skid onto anchor foundations.",
         },
         {
             "source_file": "daily_site_report_multidiscipline_2026-08-19.txt",
@@ -707,8 +834,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0025",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Pneumatic line tightness leak test with nitrogen and soapy bubble solution."
+            "notes": "Maps to Pneumatic line tightness leak test with nitrogen and soapy bubble solution.",
         },
         {
             "source_file": "daily_site_report_multidiscipline_2026-08-19.txt",
@@ -718,8 +846,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0028",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Fitting high-density rockwool / mineral wool insulation shells on steam headers."
+            "notes": "Maps to Fitting high-density rockwool / mineral wool insulation shells on steam headers.",
         },
         {
             "source_file": "daily_site_report_multidiscipline_2026-08-19.txt",
@@ -729,8 +858,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0018",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Erect 11kV vacuum circuit breaker switchgear cubicles and bolt copper busbar joints at VFD-PANEL-01."
+            "notes": "Maps to Erect 11kV vacuum circuit breaker switchgear cubicles and bolt copper busbar joints at VFD-PANEL-01.",
         },
         {
             "source_file": "daily_site_report_multidiscipline_2026-08-19.txt",
@@ -740,8 +870,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0025",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Perform 5kV / 1kV Megger insulation resistance testing on power feeder cables at CP-TRU-01."
+            "notes": "Maps to Perform 5kV / 1kV Megger insulation resistance testing on power feeder cables at CP-TRU-01.",
         },
         {
             "source_file": "daily_site_report_multidiscipline_2026-08-19.txt",
@@ -751,8 +882,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0030",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "significant_rephrase",
-            "notes": "Maps to Install and calibrate field smart pressure and temperature transmitters with HART communicator."
+            "notes": "Maps to Install and calibrate field smart pressure and temperature transmitters with HART communicator.",
         },
         {
             "source_file": "daily_site_report_multidiscipline_2026-08-19.txt",
@@ -762,11 +894,205 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "unmatched",
             "is_matched": False,
+            "difficult_case_category": "missing_schedule_match",
             "rephrasing_type": "deliberate_non_match",
-            "notes": "Deliberate non-match: temporary event staging platform."
+            "notes": "Deliberate non-match: temporary event staging platform.",
         },
 
-        # Spreadsheet 1 entries
+        # ---------------------------------------------------------
+        # Report 5 entries (Piping & PRD Demo / Difficult Cases)
+        # ---------------------------------------------------------
+        {
+            "source_file": "daily_site_report_piping_2026-08-20.txt",
+            "entry_index": 1,
+            "section": "1. Line 24-XX Spool Erection (PRD Demo Headline Case - Start Event)",
+            "raw_text": "24-XX spool erection started at 10:30 AM in North Unit. Rigging crew positioned the 8-inch carbon steel line onto structural rack supports.",
+            "discipline": "Piping",
+            "expected_activity_id": "PIP-2458",
+            "is_matched": True,
+            "difficult_case_category": "start_event",
+            "rephrasing_type": "prd_headline_example",
+            "event_type": "STARTED",
+            "notes": "PRD Section 22 Headline Demo Example: matches PIP-2458 Erect Line 24-XX at 94% confidence.",
+        },
+        {
+            "source_file": "daily_site_report_piping_2026-08-20.txt",
+            "entry_index": 2,
+            "section": "2. Line 24-XX Erection Completion (PRD Demo Headline Case - Completion Event)",
+            "raw_text": "Line 24-XX erection completed on 31-Aug. Final alignment and drift pin removal checked off by QA inspector.",
+            "discipline": "Piping",
+            "expected_activity_id": "PIP-2458",
+            "is_matched": True,
+            "difficult_case_category": "completion_event",
+            "rephrasing_type": "prd_headline_example",
+            "event_type": "COMPLETED",
+            "notes": "PRD Section 22 Completion Follow-up: updates actual finish to 31-Aug (Planned 23-Aug, 8 days delay).",
+        },
+        {
+            "source_file": "daily_site_report_piping_2026-08-20.txt",
+            "entry_index": 3,
+            "section": "3. Exact Baseline Match Test Case",
+            "raw_text": "Erect Line 24-XX",
+            "discipline": "Piping",
+            "expected_activity_id": "PIP-2458",
+            "is_matched": True,
+            "difficult_case_category": "exact_wording_match",
+            "rephrasing_type": "verbatim_exact_match",
+            "notes": "Exact verbatim string match to baseline schedule activity description.",
+        },
+        {
+            "source_file": "daily_site_report_piping_2026-08-20.txt",
+            "entry_index": 4,
+            "section": "4. Abbreviation & Field Jargon Case",
+            "raw_text": "PWHT & NDT on CS line 18-B completed. Certified tech recorded 12-pt thermal charts and 100% PAUT on 8 butt joints at South Unit.",
+            "discipline": "Piping",
+            "expected_activity_id": "PIP-2407",
+            "is_matched": True,
+            "difficult_case_category": "abbreviations",
+            "rephrasing_type": "heavy_acronym_abbreviation",
+            "notes": "Tests field abbreviations: PWHT, NDT, CS, PAUT matching Post-Weld Heat Treatment and NDE activities.",
+        },
+        {
+            "source_file": "daily_site_report_piping_2026-08-20.txt",
+            "entry_index": 5,
+            "section": "5. Ambiguous Multiple Match Case",
+            "raw_text": "Hydrotesting process line in Train A completed with calibrated gauge holding 36 bar. (Ambiguous: Multiple hydrotest packages in Train A without specific line ID).",
+            "discipline": "Piping",
+            "expected_activity_id": "PIP-2459",
+            "is_matched": True,
+            "difficult_case_category": "multiple_possible_matches",
+            "rephrasing_type": "ambiguous_multiple_candidates",
+            "notes": "Ambiguous match with multiple candidate lines in Train A requiring disambiguation.",
+        },
+        {
+            "source_file": "daily_site_report_piping_2026-08-20.txt",
+            "entry_index": 6,
+            "section": "6. Delay Reason Case",
+            "raw_text": "Piping erection halted on Line 18-B in South Unit due to 4-day delay in receiving Class 600 isolation check valve from vendor.",
+            "discipline": "Piping",
+            "expected_activity_id": "PIP-2402",
+            "is_matched": True,
+            "difficult_case_category": "delay_reason_present",
+            "delay_reason": "Vendor material delivery delay (Class 600 isolation check valve)",
+            "rephrasing_type": "delay_impact_description",
+            "notes": "Tests extraction of structured delay reason and root cause mapping.",
+        },
+        {
+            "source_file": "daily_site_report_piping_2026-08-20.txt",
+            "entry_index": 7,
+            "section": "7. Flange Torque Tightening",
+            "raw_text": "Cross-pattern torque tightening of Class 300/600 raised-face flanges with spiral gaskets completed at Crude Tank Farm Loading Manifold (Line 24-TF-502).",
+            "discipline": "Piping",
+            "expected_activity_id": "PIP-2455",
+            "is_matched": True,
+            "difficult_case_category": "different_wording",
+            "rephrasing_type": "semantic_paraphrase",
+            "notes": "Maps to Flange bolt-up and torque tensioning per ASME PCC-1 at Line 24-TF-502.",
+        },
+        {
+            "source_file": "daily_site_report_piping_2026-08-20.txt",
+            "entry_index": 8,
+            "section": "8. Site Office AC Unloading",
+            "raw_text": "Piping crew assisted logistics team in unloading 3 wooden crates of office air conditioners at the main administrative gate.",
+            "discipline": "Piping",
+            "expected_activity_id": "unmatched",
+            "is_matched": False,
+            "difficult_case_category": "missing_schedule_match",
+            "rephrasing_type": "deliberate_non_match",
+            "notes": "Deliberate non-match: administrative office equipment handling.",
+        },
+
+        # ---------------------------------------------------------
+        # Report 6 entries (Instrumentation & HSE)
+        # ---------------------------------------------------------
+        {
+            "source_file": "daily_site_report_inst_hse_2026-08-21.txt",
+            "entry_index": 1,
+            "section": "Smart Transmitter Calibration",
+            "raw_text": "Field 5-point calibration and 4-20mA loop verification of smart pressure transmitters completed at Process Train A Instrument Stanchion Corridor (INST-TRAIN-A).",
+            "discipline": "Instrumentation",
+            "expected_activity_id": "ACT-INS-0001",
+            "is_matched": True,
+            "difficult_case_category": "different_disciplines",
+            "rephrasing_type": "informal_field_voice",
+            "notes": "Maps to Install and calibrate field smart pressure transmitters with HART 475 at INST-TRAIN-A.",
+        },
+        {
+            "source_file": "daily_site_report_inst_hse_2026-08-21.txt",
+            "entry_index": 2,
+            "section": "Marshalling Cabinet Wiring",
+            "raw_text": "Glanding, ferrule dressing, and landing shielded twisted pair cables on DCS terminal strips inside Central Control Room Marshalling Cabinets (DCS-MARSH-01).",
+            "discipline": "Instrumentation",
+            "expected_activity_id": "ACT-INS-0003",
+            "is_matched": True,
+            "difficult_case_category": "different_disciplines",
+            "rephrasing_type": "semantic_paraphrase",
+            "notes": "Maps to Route, dress, and land multi-pair cables inside DCS marshalling cabinet at DCS-MARSH-01.",
+        },
+        {
+            "source_file": "daily_site_report_inst_hse_2026-08-21.txt",
+            "entry_index": 3,
+            "section": "Flame Detector Alignment",
+            "raw_text": "Installing multi-spectrum IR3 flame sensors and aiming optical field of view across plant perimeter (FGS-DET-01).",
+            "discipline": "Instrumentation",
+            "expected_activity_id": "ACT-INS-0004",
+            "is_matched": True,
+            "difficult_case_category": "different_disciplines",
+            "rephrasing_type": "informal_field_voice",
+            "notes": "Maps to Mount and optical-align triple IR (IR3) flame detectors at FGS-DET-01.",
+        },
+        {
+            "source_file": "daily_site_report_inst_hse_2026-08-21.txt",
+            "entry_index": 4,
+            "section": "Firewater Hydrant Flow Testing",
+            "raw_text": "Bolting up cast-iron wet barrel fire hydrants and measuring discharge flow and static head along Plant Firewater Ring Main Hydrant Post Grid (HYDRANT-POST-01).",
+            "discipline": "HSE",
+            "expected_activity_id": "ACT-HSE-0001",
+            "is_matched": True,
+            "difficult_case_category": "different_disciplines",
+            "rephrasing_type": "informal_field_voice",
+            "notes": "Maps to Install firewater post hydrants, landing valves, and perform flow tests at HYDRANT-POST-01.",
+        },
+        {
+            "source_file": "daily_site_report_inst_hse_2026-08-21.txt",
+            "entry_index": 5,
+            "section": "Radiography Radiation Boundary Sweep",
+            "raw_text": "Surveyed radiation dose rates and set up physical barricading with flashing beacons for gamma NDE radiography (NDT-RAD-EXCL).",
+            "discipline": "HSE",
+            "expected_activity_id": "ACT-HSE-0006",
+            "is_matched": True,
+            "difficult_case_category": "different_disciplines",
+            "rephrasing_type": "semantic_paraphrase",
+            "notes": "Maps to Survey radiation dose rates and set up physical barricading for gamma NDE radiography at NDT-RAD-EXCL.",
+        },
+        {
+            "source_file": "daily_site_report_inst_hse_2026-08-21.txt",
+            "entry_index": 6,
+            "section": "Safety Shower Commissioning",
+            "raw_text": "Connecting potable supply to combination safety shower/eyewash and testing audio-visual flow alarm switches (SS-EW-01).",
+            "discipline": "HSE",
+            "expected_activity_id": "ACT-HSE-0002",
+            "is_matched": True,
+            "difficult_case_category": "different_disciplines",
+            "rephrasing_type": "informal_field_voice",
+            "notes": "Maps to Plumb and test emergency safety showers, eyewashes, and flow alarm switches at SS-EW-01.",
+        },
+        {
+            "source_file": "daily_site_report_inst_hse_2026-08-21.txt",
+            "entry_index": 7,
+            "section": "Safety Committee Monthly Tea Meeting",
+            "raw_text": "HSE team organized a 45-minute monthly safety committee tea refreshment session in the temporary canteen shed.",
+            "discipline": "HSE",
+            "expected_activity_id": "unmatched",
+            "is_matched": False,
+            "difficult_case_category": "missing_schedule_match",
+            "rephrasing_type": "deliberate_non_match",
+            "notes": "Deliberate non-match: monthly safety committee meeting refreshment.",
+        },
+
+        # ---------------------------------------------------------
+        # Spreadsheet 1 entries (Civil & Mechanical CSV)
+        # ---------------------------------------------------------
         {
             "source_file": "daily_progress_log_civil_mechanical_2026-08-17.csv",
             "entry_index": 1,
@@ -775,8 +1101,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0008",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Backfilling foundation trenches with approved granular fill in 200mm lifts."
+            "notes": "Maps to Backfilling foundation trenches with approved granular fill in 200mm lifts.",
         },
         {
             "source_file": "daily_progress_log_civil_mechanical_2026-08-17.csv",
@@ -786,8 +1113,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0008",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Erect timber and steel panel formwork with bracing for deep pedestal footing."
+            "notes": "Maps to Erect timber and steel panel formwork with bracing for deep pedestal footing.",
         },
         {
             "source_file": "daily_progress_log_civil_mechanical_2026-08-17.csv",
@@ -797,8 +1125,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0021",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "significant_rephrase",
-            "notes": "Maps to Waterstop strip installation and alignment at cold concrete pour joints."
+            "notes": "Maps to Waterstop strip installation and alignment at cold concrete pour joints.",
         },
         {
             "source_file": "daily_progress_log_civil_mechanical_2026-08-17.csv",
@@ -808,8 +1137,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0030",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Lay solid concrete block masonry wall with reinforced concrete bond beams."
+            "notes": "Maps to Lay solid concrete block masonry wall with reinforced concrete bond beams.",
         },
         {
             "source_file": "daily_progress_log_civil_mechanical_2026-08-17.csv",
@@ -819,8 +1149,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0003",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Precision laser alignment of motor-pump shaft coupling and thermal offset check at K-102B."
+            "notes": "Maps to Precision laser alignment of motor-pump shaft coupling and thermal offset check at K-102B.",
         },
         {
             "source_file": "daily_progress_log_civil_mechanical_2026-08-17.csv",
@@ -830,8 +1161,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0004",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "significant_rephrase",
-            "notes": "Maps to Dial indicator soft-foot measurement and precision stainless steel shimming at K-202A."
+            "notes": "Maps to Dial indicator soft-foot measurement and precision stainless steel shimming at K-202A.",
         },
         {
             "source_file": "daily_progress_log_civil_mechanical_2026-08-17.csv",
@@ -841,8 +1173,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0013",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to 100% Non-Destructive Testing (radiographic and magnetic particle) on field welds."
+            "notes": "Maps to 100% Non-Destructive Testing (radiographic and magnetic particle) on field welds.",
         },
         {
             "source_file": "daily_progress_log_civil_mechanical_2026-08-17.csv",
@@ -852,8 +1185,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0025",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Pneumatic line tightness leak test with nitrogen and soapy bubble solution at AC-101."
+            "notes": "Maps to Pneumatic line tightness leak test with nitrogen and soapy bubble solution at AC-101.",
         },
         {
             "source_file": "daily_progress_log_civil_mechanical_2026-08-17.csv",
@@ -863,11 +1197,14 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "unmatched",
             "is_matched": False,
+            "difficult_case_category": "missing_schedule_match",
             "rephrasing_type": "deliberate_non_match",
-            "notes": "Deliberate non-match: temporary visitor privacy screening."
+            "notes": "Deliberate non-match: temporary visitor privacy screening.",
         },
 
-        # Spreadsheet 2 entries
+        # ---------------------------------------------------------
+        # Spreadsheet 2 entries (Electrical & Piping CSV)
+        # ---------------------------------------------------------
         {
             "source_file": "contractor_daily_log_electrical_piping_2026-08-18.csv",
             "entry_index": 1,
@@ -876,8 +1213,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0009",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "significant_rephrase",
-            "notes": "Maps to Post-pour ultrasonic pulse velocity (UPV) and rebound hammer testing."
+            "notes": "Maps to Post-pour ultrasonic pulse velocity (UPV) and rebound hammer testing.",
         },
         {
             "source_file": "contractor_daily_log_electrical_piping_2026-08-18.csv",
@@ -887,8 +1225,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0026",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Erect primary structural steel columns and temporary guy-wire support."
+            "notes": "Maps to Erect primary structural steel columns and temporary guy-wire support.",
         },
         {
             "source_file": "contractor_daily_log_electrical_piping_2026-08-18.csv",
@@ -898,8 +1237,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Civil",
             "expected_activity_id": "ACT-CIV-0027",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to High-strength friction grip (HSFG) bolt tightening and torque check for FND-V-201."
+            "notes": "Maps to High-strength friction grip (HSFG) bolt tightening and torque check for FND-V-201.",
         },
         {
             "source_file": "contractor_daily_log_electrical_piping_2026-08-18.csv",
@@ -909,8 +1249,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0006",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Install lube oil console, interconnecting SS tubing, and accumulator vessel at P-101A."
+            "notes": "Maps to Install lube oil console, interconnecting SS tubing, and accumulator vessel at P-101A.",
         },
         {
             "source_file": "contractor_daily_log_electrical_piping_2026-08-18.csv",
@@ -920,8 +1261,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0017",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Install variable spring pipe hangers and set cold travel preset stops at SKID-FG-01."
+            "notes": "Maps to Install variable spring pipe hangers and set cold travel preset stops at SKID-FG-01.",
         },
         {
             "source_file": "contractor_daily_log_electrical_piping_2026-08-18.csv",
@@ -931,8 +1273,9 @@ GROUND_TRUTH_DATA = {
             "discipline": "Mechanical",
             "expected_activity_id": "ACT-MEC-0026",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "significant_rephrase",
-            "notes": "Maps to Chemical cleaning, degreasing, and citric acid passivation of lube oil lines."
+            "notes": "Maps to Chemical cleaning, degreasing, and citric acid passivation of lube oil lines.",
         },
         {
             "source_file": "contractor_daily_log_electrical_piping_2026-08-18.csv",
@@ -942,41 +1285,57 @@ GROUND_TRUTH_DATA = {
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0005",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Apply certified intumescent firestop mortar and pillows at cable wall penetrations at XFMR-33-11KV-01."
+            "notes": "Maps to Apply certified intumescent firestop mortar and pillows at cable wall penetrations at XFMR-33-11KV-01.",
         },
         {
             "source_file": "contractor_daily_log_electrical_piping_2026-08-18.csv",
             "entry_index": 8,
             "section": "Row 8",
-            "raw_text": "Landed incoming power feeds and landed control wires onto terminal blocks inside MCC-B breaker cubicles for TRNCH-ELEC-02",
+            "raw_text": "Morning Shift: Commenced winched pulling of 33kV XLPE insulated armored power feeder into duct bank at TRNCH-ELEC-02",
             "discipline": "Electrical",
-            "expected_activity_id": "ACT-ELE-0012",
+            "expected_activity_id": "ACT-ELE-0006",
             "is_matched": True,
-            "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Terminate power leads and control wiring onto terminal strips inside MCC breaker cubicle at TRNCH-ELEC-02."
+            "difficult_case_category": "duplicate_like_reports",
+            "rephrasing_type": "duplicate_shift_report",
+            "notes": "Morning shift log for 33kV cable pulling in trench corridor B (pair of duplicate-like report).",
         },
         {
             "source_file": "contractor_daily_log_electrical_piping_2026-08-18.csv",
             "entry_index": 9,
             "section": "Row 9",
-            "raw_text": "Assembled steel battery stands, placed individual 2V stationary lead-acid cells, and torqued inter-cell bus links (LIGHT-MAST-01)",
+            "raw_text": "Evening Shift: Continued pulling 33kV XLPE insulated armored power feeder into duct bank at TRNCH-ELEC-02 (Duplicate-like log)",
             "discipline": "Electrical",
-            "expected_activity_id": "ACT-ELE-0020",
+            "expected_activity_id": "ACT-ELE-0006",
             "is_matched": True,
-            "rephrasing_type": "informal_field_voice",
-            "notes": "Maps to Install battery bank racks, mount 2V lead-acid cells, and torque cell interlinks at LIGHT-MAST-01."
+            "difficult_case_category": "duplicate_like_reports",
+            "rephrasing_type": "duplicate_shift_report",
+            "notes": "Evening shift follow-up log for same activity (tests deduplication and progressive update handling).",
         },
         {
             "source_file": "contractor_daily_log_electrical_piping_2026-08-18.csv",
             "entry_index": 10,
             "section": "Row 10",
+            "raw_text": "Assembled steel battery stands, placed individual 2V stationary lead-acid cells, and torqued inter-cell bus links (LIGHT-MAST-01)",
+            "discipline": "Electrical",
+            "expected_activity_id": "ACT-ELE-0020",
+            "is_matched": True,
+            "difficult_case_category": "different_wording",
+            "rephrasing_type": "informal_field_voice",
+            "notes": "Maps to Install battery bank racks, mount 2V lead-acid cells, and torque cell interlinks at LIGHT-MAST-01.",
+        },
+        {
+            "source_file": "contractor_daily_log_electrical_piping_2026-08-18.csv",
+            "entry_index": 11,
+            "section": "Row 11",
             "raw_text": "Injected secondary current using Omicron test kit to calibrate phase overcurrent and earth fault protection relays (SWG-33KV-01)",
             "discipline": "Electrical",
             "expected_activity_id": "ACT-ELE-0026",
             "is_matched": True,
+            "difficult_case_category": "different_wording",
             "rephrasing_type": "semantic_paraphrase",
-            "notes": "Maps to Secondary current injection testing of numerical protection relays (50/51/51N) at SWG-33KV-01."
+            "notes": "Maps to Secondary current injection testing of numerical protection relays (50/51/51N) at SWG-33KV-01.",
         },
     ]
 }
@@ -987,14 +1346,13 @@ def generate_all_reports():
     targets = [SUPABASE_SEED_REPORTS, DATA_REPORTS]
 
     for target_dir in targets:
-        # Write Report 1
+        # Write 6 Text Reports
         (target_dir / REPORT_1_FILENAME).write_text(REPORT_1_TEXT, encoding="utf-8")
-        # Write Report 2
         (target_dir / REPORT_2_FILENAME).write_text(REPORT_2_TEXT, encoding="utf-8")
-        # Write Report 3
         (target_dir / REPORT_3_FILENAME).write_text(REPORT_3_TEXT, encoding="utf-8")
-        # Write Report 4
         (target_dir / REPORT_4_FILENAME).write_text(REPORT_4_TEXT, encoding="utf-8")
+        (target_dir / REPORT_5_FILENAME).write_text(REPORT_5_TEXT, encoding="utf-8")
+        (target_dir / REPORT_6_FILENAME).write_text(REPORT_6_TEXT, encoding="utf-8")
 
         # Write Spreadsheet 1
         with open(target_dir / SPREADSHEET_1_FILENAME, "w", newline="", encoding="utf-8") as f:
@@ -1023,9 +1381,11 @@ def generate_all_reports():
 if __name__ == "__main__":
     generate_all_reports()
     print("\nGenerated Summary:")
-    print("- 4 Free-text Daily Reports (.txt)")
+    print("- 6 Free-text Daily Reports (.txt)")
     print("- 2 Daily Progress Spreadsheets (.csv)")
     print("- 1 Benchmark Ground Truth Mapping (ground_truth.json)")
     print(f"- Total evaluation entries: {len(GROUND_TRUTH_DATA['entries'])}")
     print(f"- Matched entries: {sum(1 for e in GROUND_TRUTH_DATA['entries'] if e['is_matched'])}")
     print(f"- Deliberate unmatched entries: {sum(1 for e in GROUND_TRUTH_DATA['entries'] if not e['is_matched'])}")
+    diff_cases = {e.get("difficult_case_category") for e in GROUND_TRUTH_DATA["entries"] if e.get("difficult_case_category")}
+    print(f"- Difficult case categories covered ({len(diff_cases)}): {sorted(diff_cases)}")

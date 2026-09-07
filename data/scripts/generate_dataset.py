@@ -1,9 +1,10 @@
 """
 Generate synthetic dataset for ProgressBridge AI (SIH26122):
-- supabase/seed/schedule_activities.csv: 750 L5/L6 activities across Civil, Mechanical, Electrical
+- supabase/seed/schedule_activities.csv: 890 L5/L6 activities across Civil, Mechanical, Electrical, Piping, Instrumentation, HSE
 - data/schedule_activities.csv: Synchronized copy for local scripts
 - Includes realistic field engineering phrasing, 10-15% paraphrased variations for semantic matching,
   realistic 6-month project timeline, hierarchical WBS codes, and status distributions.
+- Matches PRD Section 21 & 22 demo cases including PIP-2458 (Erect Line 24-XX).
 """
 
 import csv
@@ -111,16 +112,63 @@ ELEC_LOCATIONS = [
     ("Cathodic Protection Transformer Rectifier Unit", "CP-TRU-01", "Corrosion Station"),
 ]
 
+PIPING_LOCATIONS = [
+    ("North Unit - Process Train A", "Line 24-XX", "North Unit"),
+    ("South Unit - Reforming Area", "Line 18-B", "South Unit"),
+    ("Main Pipe Rack Corridor - Tier 1", "Line 36-CS-101", "Rack Corridor"),
+    ("Main Pipe Rack Corridor - Tier 2", "Line 24-CS-102", "Rack Corridor"),
+    ("Crude Distillation Column Unit", "Line 30-CDU-01", "Distillation Area"),
+    ("Flare Header Knockout Network", "Line 42-FL-201", "Flare Area"),
+    ("Overhead Superheated Steam Header", "Line 12-STM-301", "Steam Network"),
+    ("Acid Gas Amine Contactor Tie-In", "Line 08-AG-401", "Treating Unit"),
+    ("Cooling Water Supply/Return Loop", "Line 28-CW-501", "Utilities Zone"),
+    ("Boiler Feedwater HP Discharge Line", "Line 06-BFW-601", "Boiler Area"),
+    ("Hydrocarbon Slop Oil Drain Header", "Line 04-SL-701", "Tank Farm Area"),
+    ("Demineralized Water Distribution Line", "Line 10-DM-801", "Water Treatment"),
+    ("Methanol Injection High-Pressure Tubing", "Line 02-ME-901", "Dosing Skid"),
+    ("Fuel Gas Supply & Conditioning Loop", "Line 14-FG-102", "Fuel Gas Area"),
+    ("Amine Regeneration Bottoms Line", "Line 16-AM-202", "Treating Unit"),
+    ("Wet Gas Compressor Suction Header", "Line 20-CG-302", "Compressor Bay"),
+    ("Effluent Transfer Pipeline", "Line 12-ET-402", "Offsites"),
+    ("Crude Tank Farm Loading Manifold", "Line 24-TF-502", "Tank Farm East"),
+    ("Firewater Ring Main Header Sector East", "Line 16-FW-602", "Fire Safety Area"),
+    ("LPG Storage Mounded Bullet Tie-In", "Line 08-LP-702", "LPG Area"),
+]
+
+INST_LOCATIONS = [
+    ("Central Control Room (CCR) Marshalling Cabinets", "DCS-MARSH-01", "Control Building"),
+    ("Field Auxiliary Room FAR-01", "FAR-PNL-01", "Field Satellite"),
+    ("Process Train A - Instrument Stanchion Corridor", "INST-TRAIN-A", "Process Area 1"),
+    ("Tank Farm East Radar Level Gauge Network", "LT-TK-101", "Tank Farm East"),
+    ("Booster Compressor Anti-Surge Control Station", "ASV-K102", "Compressor Area"),
+    ("Emergency Shutdown System (ESD) Logic Rack", "ESD-SYS-01", "Control Building"),
+    ("Plant Wide Optical Flame Detector Ring", "FGS-DET-01", "Safety Perimeter"),
+    ("Flare Stack Ultrasonic Gas Flow Meter Skid", "FT-FL-401", "Flare Area"),
+    ("Process Analyzer Fast-Loop Conditioning House", "ANALYZER-SH-01", "Analyzer House"),
+    ("Boiler Steam Drum Differential Level Transmitter Rack", "LT-STM-201", "Utilities Zone"),
+]
+
+HSE_LOCATIONS = [
+    ("Plant Firewater Ring Main Hydrant Post Grid", "HYDRANT-POST-01", "Fire Safety Area"),
+    ("Sector North Emergency Evacuation Assembly Point", "EAP-NORTH-01", "Perimeter"),
+    ("Process Area Safety Shower & Emergency Eyewash Stations", "SS-EW-01", "Process Area 1"),
+    ("Hazardous Chemical Storage Drum Containment Area", "HAZMAT-YARD-01", "Chemical Storage"),
+    ("Perimeter Flare Radiation Barrier Exclusion Zone", "FLARE-RAD-ZONE", "Flare Perimeter"),
+    ("Main 33kV Transformer Deluge Foam/Water Spray Skids", "DELUGE-XFMR-01", "Transformer Yard"),
+    ("Compressor House High-Expansion Foam Fire Suppression Skid", "FOAM-SKID-01", "Compressor Shelter"),
+    ("Heavy Equipment Laydown Scaffolding Erection Zone", "SCAFF-ZONE-A", "Laydown Yard"),
+    ("Process Train A Confined Space Vessel Manways", "CSE-VESSEL-101", "Process Area 1"),
+    ("Radiography Non-Destructive Testing Exclusion Barrier", "NDT-RAD-EXCL", "Process Area 2"),
+]
+
 # -------------------------------------------------------------
 # Detailed L5/L6 Activity Templates with Semantic Variants
 # -------------------------------------------------------------
 
-# Format: (canonical_action, wbs_subcode, phase_offset_weeks, duration_days, [paraphrase_variants])
 CIVIL_WORK_PACKAGES = [
-    # Earthworks & Substructure (Phase: Weeks 0 - 8)
     (
         "Rough grading and bulk earth excavation down to founding level",
-        "1.1.01", 0, 8,
+        "1.01", 0, 8,
         [
             "Bulk soil excavation and rough site grading to design formation level",
             "Site earthmoving and rough cut excavation to founding elevation",
@@ -129,7 +177,7 @@ CIVIL_WORK_PACKAGES = [
     ),
     (
         "Excavation for foundation footing and equipment plinths",
-        "1.1.02", 1, 6,
+        "1.02", 1, 6,
         [
             "Pit digging and foundation trench excavation for equipment plinth",
             "Excavate foundation footing pit and plinth bases",
@@ -138,7 +186,7 @@ CIVIL_WORK_PACKAGES = [
     ),
     (
         "Subgrade soil compaction and in-situ moisture-density nuclear testing",
-        "1.1.03", 1, 4,
+        "1.03", 1, 4,
         [
             "Subgrade roller compaction with field moisture-density nuclear gauge checks",
             "Vibratory compaction of subgrade soil and in-situ Proctor density testing",
@@ -147,929 +195,726 @@ CIVIL_WORK_PACKAGES = [
     ),
     (
         "Laying and compacting 150mm crushed aggregate base course",
-        "1.1.04", 2, 5,
+        "1.04", 2, 5,
         [
-            "Placement and vibrating compaction of 150mm crushed stone sub-base",
-            "Spreading 150mm aggregate base course and roller compaction",
-            "150mm crushed rock base course installation and grading",
+            "Spreading, grading, and compacting 150mm graded stone base course",
+            "Placement and rolling of 150mm crushed rock foundation sub-base",
+            "150mm aggregate base spreading and vibratory roller compaction",
         ]
     ),
     (
         "Slope trimming and placement of stone pitching along stormwater canal",
-        "1.1.05", 2, 7,
+        "1.05", 2, 6,
         [
-            "Ditch slope profiling and stone rip-rap pitching for drainage channel",
-            "Stone pitching lining and slope batter dressing on stormwater ditch",
-            "Trimming canal embankments and laying stone pitching protection",
+            "Side slope dressing and dry stone pitching lining for drainage ditch",
+            "Embankment slope trimming and rip-rap stone pitching placement",
+            "Trimming canal bank and installing stone pitching erosion protection",
         ]
     ),
     (
         "Geotextile membrane installation beneath heavy haul road embankment",
-        "1.1.06", 2, 4,
+        "1.06", 3, 3,
         [
-            "Laying woven geotextile separation fabric under heavy haul roadway",
-            "Haul road subgrade geotextile sheet placement and overlapping",
-            "Subgrade geotextile stabilization membrane rollout and pinning",
+            "Laying non-woven geotextile separation fabric under access road base",
+            "Spreading woven stabilization geotextile sheet across subgrade",
+            "Installing subsurface separation geotextile membrane for haul road",
         ]
     ),
     (
-        "Dewatering excavation pit prior to blinding concrete pour",
-        "1.1.07", 3, 3,
+        "Excavation sump dewatering and mud clearance before blinding",
+        "1.07", 3, 3,
         [
-            "Pumping groundwater and pit dewatering ahead of mud mat concrete",
-            "Excavation sump dewatering and mud clearance before blinding",
-            "Submersible pump dewatering of foundation pit prior to PCC pour",
+            "Pumping out ponded ground water and removing soft sludge from foundation pit",
+            "Sump pump dewatering and mucking out foundation excavation bed",
+            "Pit dewatering and manual clearing of silt layer prior to mud mat",
         ]
     ),
     (
         "Backfilling foundation trenches with approved granular fill in 200mm lifts",
-        "1.1.08", 6, 7,
+        "1.08", 4, 7,
         [
-            "Granular backfill compaction in 200mm layers around foundation footings",
-            "Tamping approved structural backfill in 200mm lifts along foundation walls",
-            "Layered backfilling and pneumatic tamping around completed concrete bases",
+            "Layered trench backfilling with granular soil and plate compactor passes",
+            "Placement of granular backfill in 200mm compacted layers around footings",
+            "Compacting select backfill material in 200mm lifts along foundation walls",
         ]
     ),
     (
         "Plate load bearing capacity testing on compacted formation soil",
-        "1.1.09", 2, 3,
+        "1.09", 4, 2,
         [
-            "Conducting static plate load test to confirm allowable soil bearing pressure",
-            "Plate bearing test for subsoil settlement and bearing capacity verification",
-            "In-situ plate load test on compacted foundation subgrade formation",
+            "Static plate load test to verify subgrade allowable bearing pressure",
+            "Conducting in-situ plate bearing test on compacted earth formation",
+            "Plate bearing capacity verification test using hydraulic reaction jack",
         ]
     ),
     (
         "Excavation and trench shoring for underground storm drainage culvert",
-        "1.1.10", 3, 6,
+        "1.10", 5, 6,
         [
-            "Drainage trenching with trench box shoring for stormwater concrete culvert",
-            "Digging storm drain trench and installing trench sheet safety shoring",
-            "Storm sewer trench excavation and structural shoring installation",
+            "Trenching and installing hydraulic shoring boxes for storm water pipe run",
+            "Culvert trench excavation with steel trench shield safety shoring",
+            "Digging deep drainage trench and placing aluminum trench shoring panels",
         ]
     ),
-
-    # Concrete Foundations & Substructures (Phase: Weeks 3 - 14)
     (
         "Pour 75mm plain cement concrete (PCC) lean blinding mud mat layer",
-        "1.2.01", 3, 3,
+        "2.01", 5, 3,
         [
-            "Placing 75mm lean concrete (PCC) blinding bed on excavation base",
-            "Casting 75mm lean mix mud mat concrete over subgrade",
-            "Pouring unreinforced PCC blinding layer 75mm thickness",
+            "Placing 75mm lean concrete blinding slab on prepared excavation bottom",
+            "Casting 75mm PCC mud mat substrate prior to structural reinforcement",
+            "Pouring lean concrete blinding layer over compacted earth sub-base",
         ]
     ),
     (
         "Erect timber and steel panel formwork with bracing for deep pedestal footing",
-        "1.2.02", 4, 6,
+        "2.02", 6, 6,
         [
-            "Assembling and bracing shuttering formwork panels for high foundation pedestal",
-            "Formwork shuttering fabrication and diagonal bracing on pedestal footing",
-            "Setting up foundation pedestal forms with heavy steel waler supports",
+            "Assembling and bracing modular steel-ply formwork for heavy plinth",
+            "Fixing vertical shuttering panels and tie rods for pedestal foundation",
+            "Installing side formwork panels and diagonal steel pipe bracing for footings",
         ]
     ),
     (
-        "Fabricate, hoist and fix heavy reinforcement rebar cage (#8 and #10 bars)",
-        "1.2.03", 4, 7,
+        "Fixing reinforcement rebar steel and hoisting main foundation cage",
+        "2.03", 7, 7,
         [
-            "Tying and placing high-yield rebar steel cage (#8 & #10 bars) with cover blocks",
-            "Fixing reinforcement rebar steel and hoisting main foundation cage",
-            "Rebar cage assembly, crane hoisting and secure tying for equipment plinth",
+            "Tying high-yield deformed steel rebar cage and crane-lifting into pit",
+            "Cutting, bending, and placing bottom/top structural rebar mats for footing",
+            "Positioning prefabricated rebar reinforcement cage on concrete cover spacers",
         ]
     ),
     (
-        "Install galvanized anchor bolt clusters and template leveling plates",
-        "1.2.04", 5, 4,
+        "Setting anchor bolt cluster assemblies with steel templates and optical leveling",
+        "2.04", 8, 4,
         [
-            "Setting anchor bolt cluster assemblies with steel templates and optical leveling",
-            "Galvanized hold-down anchor bolt alignment and template fixing",
-            "Positioning foundation anchor bolts with survey checks for equipment mounting",
+            "Aligning and fixing foundation anchor bolts using laser level and wooden jigs",
+            "Securing galvanized foundation hold-down bolts with positioning template frame",
+            "Setting foundation bolt groups to design elevation using precision total station",
         ]
     ),
     (
         "Cast grade M35 structural concrete for main foundation slab and plinth",
-        "1.2.05", 5, 4,
+        "2.05", 9, 5,
         [
-            "Pouring and vibrating grade M35 ready-mix structural concrete for base slab",
-            "M35 structural concrete pour with immersion vibrator consolidation",
-            "Placing grade M35 concrete into foundation base and vibratory finishing",
+            "Pumping and vibrating grade M35 ready-mix concrete into foundation formwork",
+            "Pouring heavy structural concrete with high-frequency immersion vibrators",
+            "Monolithic concrete placement for main equipment foundation slab",
         ]
     ),
     (
         "Apply liquid membrane curing compound and wet hessian burlap covering",
-        "1.2.06", 6, 7,
+        "2.06", 10, 4,
         [
-            "Concrete surface curing via membrane compound spray and damp burlap wrap",
-            "Wet hessian cloth wrapping and chemical curing compound application",
-            "Continuous wet curing and application of curing membrane on green concrete",
+            "Spraying acrylic curing compound and maintaining damp hessian blanket wrap",
+            "Applying resin curing sealant and water ponding on green concrete slab",
+            "Covering poured concrete with wet burlap rolls for continuous hydration curing",
         ]
     ),
     (
         "Post-pour ultrasonic pulse velocity (UPV) and rebound hammer testing",
-        "1.2.07", 7, 3,
+        "2.07", 10, 3,
         [
-            "Schmidt rebound hammer scan and UPV non-destructive test on hardened concrete",
-            "Ultrasonic sound velocity and concrete surface hardness rebound test",
-            "Non-destructive testing (UPV & rebound hammer) across concrete plinths",
+            "Non-destructive testing of hardened concrete using Schmidt hammer and UPV scan",
+            "Conducting UPV acoustic velocity and Swiss rebound hammer testing on plinths",
+            "Testing concrete uniformity and surface hardness via ultrasonic pulse velocity",
         ]
     ),
     (
         "Formwork stripping and concrete honeycombing surface patch repair",
-        "1.2.08", 6, 4,
+        "2.08", 11, 4,
         [
-            "Striking formwork shutters and non-shrink cosmetic grout touchup",
-            "Dismantling shuttering panels and repairing surface blowholes with polymer mortar",
-            "Formwork de-shuttering, surface inspection and defect patching",
+            "Dismantling pedestal shuttering panels and applying non-shrink repair grout",
+            "Stripping formwork forms and patching surface air voids with epoxy mortar",
+            "De-shuttering foundation sides and finishing exposed concrete surfaces",
         ]
     ),
     (
         "Construct reinforced concrete blast-resistant protection wall",
-        "1.2.09", 7, 10,
+        "2.09", 12, 10,
         [
-            "Casting reinforced heavy blast containment concrete blast wall",
-            "Erecting rebar and pouring high-strength concrete for blast deflector wall",
-            "Construction of heavy RC blast mitigation barrier wall",
+            "Casting 300mm thick heavy reinforced concrete blast containment barrier",
+            "Formwork, rebar fixing and pour for reinforced concrete blast-proof enclosure",
+            "Building structural reinforced concrete protective blast barrier wall",
         ]
     ),
     (
-        "Pour monolithic concrete slab with power-float surface hardener finish",
-        "1.2.10", 8, 5,
+        "Compressive strength crushing test on 7-day and 28-day concrete cube samples",
+        "2.10", 12, 2,
         [
-            "Power floating dry-shake quartz hardener onto monolithic concrete floor slab",
-            "Monolithic slab pour followed by mechanical power-trowel hardener finishing",
-            "Casting wearing floor slab with power-float abrasive-resistant topping",
-        ]
-    ),
-    (
-        "Install elastomeric ribbed waterstop seals at cold construction joints",
-        "1.2.11", 5, 3,
-        [
-            "Fixing PVC elastomeric waterstop barrier across concrete construction cold joints",
-            "Placing center-bulb rubber waterstop profile at slab joint interface",
-            "Waterstop strip installation and alignment at cold concrete pour joints",
-        ]
-    ),
-    (
-        "Tie bottom and top rebar mats for retaining bund wall foundation",
-        "1.2.12", 6, 5,
-        [
-            "Tying double-layer rebar reinforcement mesh for tank containment bund wall",
-            "Fixing top & bottom rebar mats for containment dike foundation pad",
-            "Rebar fixing and tying for reinforced concrete spill bund footing",
-        ]
-    ),
-    (
-        "Pour self-compacting concrete (SCC) inside congested pump pedestal",
-        "1.2.13", 7, 3,
-        [
-            "Pumping self-consolidating concrete (SCC) into heavily congested pedestal rebar",
-            "Casting high-slump self-compacting concrete around complex rebar embedments",
-            "Self-compacting concrete (SCC) placement in dense rebar equipment base",
-        ]
-    ),
-    (
-        "Concrete cube sampling and 7-day / 28-day compressive strength lab testing",
-        "1.2.14", 7, 3,
-        [
-            "Laboratory crushing test of concrete test cylinders for 7-day compressive strength",
-            "Concrete specimen compression testing and batch quality certification",
-            "Crushing concrete sample cubes for 7-day / 28-day strength compliance",
-        ]
-    ),
-    (
-        "Install precast concrete cable trench troughs and removable checkered covers",
-        "1.2.15", 8, 7,
-        [
-            "Laying precast concrete trench units and fitting checkered steel cover plates",
-            "Setting modular RC cable trench channels and seating trench lid slabs",
-            "Precast concrete cable trough alignment, joint sealing and cover installation",
-        ]
-    ),
-
-    # Superstructure, Structural Steel & Finishes (Phase: Weeks 8 - 20)
-    (
-        "Erect primary structural steel columns and temporary guy-wire support",
-        "1.3.01", 9, 8,
-        [
-            "Crane lifting and plumbing structural steel main columns with guy ropes",
-            "Hoisting heavy steel H-columns and securing with wire rope temp bracing",
-            "Standing up main structural steel columns and anchoring to baseplates",
-        ]
-    ),
-    (
-        "High-strength friction grip (HSFG) bolt tightening and torque check",
-        "1.3.02", 10, 6,
-        [
-            "Torquing HSFG grade 8.8 / 10.9 structural bolts with calibrated torque wrench",
-            "Tensioning high-strength friction grip connection bolts and paint-marking",
-            "Calibrated torque verification on structural steel HSFG splice joints",
-        ]
-    ),
-    (
-        "Level and pressure-grout column base plates using non-shrink epoxy grout",
-        "1.3.03", 11, 4,
-        [
-            "Pumping high-strength non-shrink epoxy grout beneath column baseplates",
-            "Precision leveling and epoxy pressure grouting under steel column base",
-            "Under-plate non-shrink grouting and packing for structural columns",
-        ]
-    ),
-    (
-        "Lift and bolt secondary transverse steel beams and diagonal cross-bracings",
-        "1.3.04", 11, 8,
-        [
-            "Crane erection of transverse secondary steel beams and diagonal wind ties",
-            "Installing cross-bracing steel members and connecting secondary floor beams",
-            "Erecting transverse steel frame beams and bolting vertical bracings",
-        ]
-    ),
-    (
-        "Lay solid concrete block masonry wall with reinforced concrete bond beams",
-        "1.3.05", 12, 9,
-        [
-            "Building 200mm solid block masonry walls with embedded lintel bond beams",
-            "Laying cement masonry unit (CMU) walls with reinforced horizontal tie beams",
-            "Masonry wall blockwork construction with mortar joints and bond beam casting",
-        ]
-    ),
-    (
-        "Apply two-coat sand-faced cement plaster on external masonry envelope",
-        "1.3.06", 14, 7,
-        [
-            "Two-coat waterproof cement sand plastering on exterior building walls",
-            "External sand-face cement rendering application over blockwork",
-            "Applying external double-coat cement plaster finish to building envelope",
-        ]
-    ),
-    (
-        "Install corrugated galvanized metal deck sheets and shear stud puddle welds",
-        "1.3.07", 13, 6,
-        [
-            "Laying corrugated steel floor decking and welding Nelson shear connectors",
-            "Metal profile decking sheet installation with puddle-welded shear studs",
-            "Fixing galvanized composite steel floor deck and shooting shear studs",
-        ]
-    ),
-    (
-        "Fireproofing application (cementitious intumescent) on structural steel legs",
-        "1.3.08", 15, 8,
-        [
-            "Spray-applied cementitious passive fireproofing on structural steel members",
-            "Intumescent fireproof coating application to achieve 2-hour fire rating",
-            "Applying structural steel fireproofing insulation encasement",
-        ]
-    ),
-    (
-        "Erect overhead crane runway gantry beam and precision align rails",
-        "1.3.09", 14, 6,
-        [
-            "Hoisting overhead travelling crane runway girders and optical rail alignment",
-            "EOT crane gantry beam setting and crane rail straightness alignment",
-            "Installing overhead crane runway beam and checking span rail gauge",
-        ]
-    ),
-    (
-        "Mount industrial louvers and double-leaf fire doors on equipment shelter",
-        "1.3.09", 16, 5,
-        [
-            "Fitting acoustic intake weather louvers and steel fire-rated double doors",
-            "Installation of ventilation louvers and 2-hr fire doors on building envelope",
-            "Mounting steel equipment shelter louvers and fire-rated emergency exit doors",
-        ]
-    ),
-    (
-        "Install perimeter heavy chain-link security fencing with razor wire topping",
-        "1.3.10", 17, 8,
-        [
-            "Fixing galvanized chainlink security fence and triple-strand concertina wire",
-            "Erecting boundary fence posts, chain-link fabric and razor wire coils",
-            "Perimeter security fence installation with barbed wire extension arms",
-        ]
-    ),
-    (
-        "Bituminous waterproofing membrane application on substation flat roof slab",
-        "1.3.11", 16, 6,
-        [
-            "Torch-applied SBS bituminous waterproofing membrane on roof concrete slab",
-            "Applying primer and multi-layer torch-on waterproofing sheet on roof deck",
-            "Roof elastomeric bitumen waterproofing membrane installation and water test",
+            "Lab hydraulic press crushing of 150mm concrete test cubes for compressive rating",
+            "Testing 7/28 day concrete cube breaking strength in accordance with ASTM C39",
+            "Compressive load testing of cured concrete cylinder samples in testing laboratory",
         ]
     ),
 ]
 
-# Format: (canonical_action, wbs_subcode, phase_offset_weeks, duration_days, [paraphrase_variants])
 MECH_WORK_PACKAGES = [
-    # Static & Rotating Equipment (Phase: Weeks 6 - 18)
     (
         "Rig, crane hoist and set horizontal shell-and-tube heat exchanger onto saddle supports",
-        "2.1.01", 6, 5,
+        "1.01", 6, 5,
         [
-            "Heavy crane lifting and setting shell & tube exchanger onto concrete saddles",
-            "Hoisting horizontal heat exchanger vessel and landing on foundation pads",
-            "Rigging and placement of shell-and-tube heat exchanger on support pedestals",
+            "Mobile crane rigging and lowering shell-and-tube exchanger onto anchor saddles",
+            "Hoisting and setting horizontal heat exchanger vessel onto concrete plinths",
+            "Crane lift and positioning of process heat exchanger on structural saddle supports",
         ]
     ),
     (
         "Position centrifugal multi-stage crude pump and rough-align baseplate",
-        "2.1.02", 7, 4,
+        "1.02", 7, 4,
         [
-            "Setting multi-stage centrifugal pump skid and rough leveling baseplate shims",
-            "Centrifugal pump skid rigging, positioning and initial level adjustment",
-            "Landing crude oil pump base frame onto foundation plinth and rough leveling",
+            "Setting multi-stage crude charge pump skid onto foundation plinth",
+            "Lifting and rough shimming centrifugal crude oil pump baseplate",
+            "Rigging and lowering pump skid onto equipment pad with machinist levels",
         ]
     ),
     (
         "Precision laser alignment of motor-pump shaft coupling and thermal offset check",
-        "2.1.03", 9, 3,
+        "1.03", 8, 3,
         [
-            "Dual-beam laser shaft alignment and thermal growth offset calibration on pump-motor",
-            "Laser coupling alignment and dial gauge runout check on rotating drive shaft",
-            "Conducting precision laser coupling alignment to within 0.03mm tolerance",
+            "Dialing in laser shaft alignment on motor-pump coupling within 0.05mm tolerance",
+            "Laser alignment verification and thermal growth calculation on drive coupling",
+            "Aligning pump and driver shafts using dual laser optical sensor heads",
         ]
     ),
     (
         "Dial indicator soft-foot measurement and precision stainless steel shimming",
-        "2.1.04", 8, 3,
+        "1.04", 8, 2,
         [
-            "Soft-foot dial gauge check and inserting SS316 precision shims under machine feet",
-            "Measuring equipment foot coplanarity with dial indicators and shimming",
-            "Soft-foot tolerance verification and precision shimming of equipment base",
+            "Checking machine frame soft foot with 0.01mm dial gauge and inserting SS shims",
+            "Soft-foot elimination on pump skid feet using precision stainless shims",
+            "Measuring and correcting equipment foot flatness and angular soft foot",
         ]
     ),
     (
-        "Uncrate, inspect internals, and mount reciprocating compressor cylinder heads",
-        "2.1.05", 10, 6,
+        "Non-shrink epoxy grouting under heavy rotating equipment baseplate",
+        "1.05", 9, 4,
         [
-            "Internal visual inspection and torque-bolting reciprocating compressor cylinders",
-            "Compressor cylinder uncrating, valve cavity inspection and head assembly",
-            "Mounting reciprocating compressor heads and torquing tie rods to spec",
+            "Mixing and pouring high-strength three-component epoxy grout under pump soleplate",
+            "Placing flowable epoxy machinery grout beneath compressor base frame",
+            "Epoxy pressure grouting under equipment baseplate with headbox technique",
         ]
     ),
     (
         "Install lube oil console, interconnecting SS tubing, and accumulator vessel",
-        "2.1.06", 11, 6,
+        "1.06", 10, 5,
         [
-            "Rigging lube oil reservoir unit, running SS tubing and tying in bladder accumulator",
-            "Lube oil package console placement and stainless interconnecting tubing fitment",
-            "Installing auxiliary lube oil system skid, tubing runs and accumulator pot",
+            "Mounting auxiliary lube oil skid, routing 316SS tubing and connecting filters",
+            "Installing compressor lube oil supply package and nitrogen bladder accumulator",
+            "Assembling rotating equipment forced lubrication console and stainless piping",
         ]
     ),
     (
-        "Fit mechanical cartridge seals and connect dual pressurized barrier fluid piping",
-        "2.1.07", 12, 4,
+        "Torque-tighten foundation anchor bolts using calibrated hydraulic torque wrench",
+        "1.07", 10, 3,
         [
-            "Mounting tandem mechanical seals and connecting Plan 53B barrier fluid piping",
-            "Cartridge mechanical seal installation and API seal flush piping hookup",
-            "Fitting dual mechanical face seals and connecting barrier liquid reservoir",
+            "Final torqueing of heavy foundation hold-down bolts to specified torque value",
+            "Hydraulic torque tightening of machine base anchor studs in cross pattern",
+            "Tightening equipment anchor nuts to target preload with hydraulic torque wrench",
         ]
     ),
     (
         "Rig and position modular chemical injection skid onto anchor foundations",
-        "2.1.08", 7, 4,
+        "1.08", 11, 4,
         [
-            "Setting pre-assembled chemical dosing skid package onto anchor bolts",
-            "Crane positioning of chemical injection module and anchor bolt securing",
-            "Rigging and mounting modular chemical injection package on concrete plinth",
+            "Crane setting of packaged chemical dosing skid on concrete pad",
+            "Hoisting and bolting down modular chemical injection package skid",
+            "Lifting chemical injection skid and bolting to foundation anchor inserts",
         ]
     ),
     (
-        "Assemble air-cooled fin-fan cooler tube bundles, plenums, and belt drive pulleys",
-        "2.1.09", 11, 8,
+        "Install and bolt Class 600 flanged isolation gate valves and check valves",
+        "1.09", 12, 4,
         [
-            "Erecting fin-fan cooler heat transfer bundles, fan plenum rings and V-belts",
-            "Fin-fan heat exchanger tube bundle assembly and fan belt drive alignment",
-            "Mounting finned tube bundles, fan cowls, sheaves and drive motors on cooler deck",
+            "Mounting Class 600 cast steel gate valves and swing check valves in pipe line",
+            "Bolting up high-pressure isolation and non-return valves with spiral-wound gaskets",
+            "Installing flanged gate/check valves and torque-tightening flange studs",
         ]
     ),
     (
-        "Mount high-pressure suction pulsation dampener bottle on compressor nozzles",
-        "2.1.10", 12, 4,
+        "Lube oil flushing of rotating equipment bearings and 5-micron patch test",
+        "1.10", 13, 4,
         [
-            "Fitting HP suction pulsation dampening vessel directly to compressor gas flange",
-            "Rigging and bolting suction volume bottle dampener onto compressor intake",
-            "Installing gas pulsation dampener vessel on reciprocating compressor cylinder",
-        ]
-    ),
-    (
-        "Erect vertical contactor column vessel and plumb with optical transit",
-        "2.1.11", 8, 6,
-        [
-            "Dual-crane tandem lift and vertical plumb alignment of gas contactor column",
-            "Rigging, uprighting and precision vertical alignment of absorption tower",
-            "Hoisting vertical column vessel and checking verticality with theodolite",
-        ]
-    ),
-
-    # Piping Fabrication, Erection & Bolting (Phase: Weeks 8 - 22)
-    (
-        "Rig and erect pre-fabricated 12-inch carbon steel schedule 80 pipe spools",
-        "2.2.01", 9, 7,
-        [
-            "Hoisting and fitting 12\" CS Sch 80 pre-fab spool pieces onto pipe rack tier",
-            "Erecting heavy 12-inch schedule 80 carbon steel spools along main pipe bridge",
-            "Rigging pre-fabricated 12-inch CS process line spools and landing on supports",
-        ]
-    ),
-    (
-        "Field fit-up and butt-weld 8-inch stainless steel 316L discharge piping",
-        "2.2.02", 10, 6,
-        [
-            "Joint fit-up, argon purge backing and GTAW butt-welding of 8\" SS316L pipe",
-            "Fit-up and full penetration butt weld on 8-inch stainless steel process line",
-            "Butt-welding 8\" SS 316L discharge piping joints with internal argon purging",
-        ]
-    ),
-    (
-        "TIG root pass and SMAW capping on high-pressure gas header weld joints",
-        "2.2.03", 11, 6,
-        [
-            "GTAW root welding and low-hydrogen SMAW fill/cap on HP gas header line",
-            "Welding HP gas piping joints using TIG root and stick electrode capping passes",
-            "Executing 6G position TIG root and manual metal arc capping on header spools",
-        ]
-    ),
-    (
-        "Install Class 600 gate, globe, and check isolation valves with spiral-wound gaskets",
-        "2.2.04", 12, 5,
-        [
-            "Fitting 600# flanged isolation valves with graphite-filled spiral wound gaskets",
-            "Installing Class 600 gate/check valves and inserting new spiral-wound flange seals",
-            "Mounting flanged process valves (Class 600) with fresh spiral wound gaskets",
-        ]
-    ),
-    (
-        "Controlled cross-pattern torque tightening on 16-inch flange connection (ASME PCC-1)",
-        "2.2.05", 13, 4,
-        [
-            "Torque bolting 16\" flange stud bolts in star pattern per ASME PCC-1 standard",
-            "Hydraulic torque tightening of 16-inch raised face flange to PCC-1 guidelines",
-            "Tightening 16-inch flange bolts with calibrated torque equipment per ASME PCC-1",
-        ]
-    ),
-    (
-        "Install variable spring pipe hangers and set cold travel preset stops",
-        "2.2.06", 13, 5,
-        [
-            "Hanging variable load spring pipe supports and locking cold travel stop pins",
-            "Mounting spring hanger assemblies and calibrating cold design position stops",
-            "Installing spring canister supports beneath piping and setting cold-load travel",
-        ]
-    ),
-    (
-        "Mount PTFE teflon sliding pipe shoes and structural guide clamps along rack tier",
-        "2.2.07", 10, 5,
-        [
-            "Fixing PTFE low-friction sliding shoes and lateral guide clips on pipe rack",
-            "Installing Teflon-lined pipe shoes and steel pipe guides across rack beams",
-            "Mounting sliding shoe assemblies and guide retainers under process piping",
-        ]
-    ),
-    (
-        "Pre-heating and post-weld heat treatment (PWHT) on heavy wall alloy spools",
-        "2.2.08", 12, 5,
-        [
-            "Induction heating pre-heat and ceramic pad PWHT cycle on heavy wall P91/P11 spools",
-            "Executing controlled thermal PWHT cycle on thick alloy pipe weld joints",
-            "Post-weld heat treatment (PWHT) and temperature chart recording on alloy piping",
-        ]
-    ),
-    (
-        "100% Non-Destructive Testing (radiographic and magnetic particle) on field welds",
-        "2.2.09", 13, 5,
-        [
-            "Gamma radiography (RT) and fluorescent magnetic particle inspection (MT) on welds",
-            "NDT radiographic film inspection and MPI examination on pressure piping joints",
-            "Performing 100% X-ray / gamma NDT and magnetic crack testing on field girth welds",
-        ]
-    ),
-    (
-        "Install pneumatic control valve diaphragm actuator and hook up instrument air lines",
-        "2.2.10", 14, 4,
-        [
-            "Mounting air diaphragm actuator on control valve body and bending air tubing",
-            "Fitting pneumatic valve actuator, smart positioner and 1/4\" SS air hookup",
-            "Actuator mounting, stroke calibration and instrument air tubing connection",
-        ]
-    ),
-    (
-        "Route and clamp 1/2-inch stainless steel instrument tubing from orifice tapping",
-        "2.2.11", 14, 5,
-        [
-            "Bending and tray-clamping 1/2\" SS 316 impulse lines from orifice flange taps",
-            "Running 1/2-inch seamless SS instrument impulse tubing to differential transmitter",
-            "Installing and clamping 1/2\" instrument tubing runs from primary tap root valves",
-        ]
-    ),
-    (
-        "Erect steam jacketed piping spools and connect thermal fluid jump-overs",
-        "2.2.12", 15, 6,
-        [
-            "Fitting double-wall steam jacketed pipe spools and welding jumper lines",
-            "Erecting jacketed sulphur line and connecting steam trace jump-over loops",
-            "Installing jacketed process pipe and testing internal core pipe integrity",
-        ]
-    ),
-
-    # Pressure Testing, Flushing & Insulation (Phase: Weeks 14 - 24)
-    (
-        "Hydrostatic pressure test on piping spool assembly at 1.5x design pressure",
-        "2.3.01", 16, 4,
-        [
-            "Hydro-testing piping test loop to 150% rated design pressure with 2-hr hold",
-            "Conducting 1.5x design pressure water hydrotest and checking for pressure drops",
-            "Filling, venting and hydrostatically pressurizing piping package to 1.5x design",
-        ]
-    ),
-    (
-        "Pneumatic line tightness leak test with nitrogen and soapy bubble solution",
-        "2.3.02", 17, 3,
-        [
-            "Pressurizing piping package with nitrogen to 7 bar and Snoop bubble leak testing",
-            "Pneumatic line tightness testing using nitrogen gas and foaming leak detector",
-            "Nitrogen gas leak test and bubble inspection on all mechanical flange joints",
-        ]
-    ),
-    (
-        "Chemical cleaning, degreasing, and citric acid passivation of lube oil lines",
-        "2.3.03", 18, 5,
-        [
-            "Recirculating alkaline degreaser and citric acid pickle flush through lube piping",
-            "Lube oil system chemical flush, degreasing wash and passivation treatment",
-            "Chemical pickling and passivation of stainless steel lube oil circulation loop",
-        ]
-    ),
-    (
-        "High-velocity dry air blowing and particle witness cloth cleanliness inspection",
-        "2.3.04", 18, 3,
-        [
-            "Dry compressed air line blowing with target cloth impingement verification",
-            "High-speed air purging of process header with white witness flannel check",
-            "Air blowing piping header lines until witness target shows zero particulate",
-        ]
-    ),
-    (
-        "Install mineral wool preformed thermal insulation on high-temperature steam line",
-        "2.3.05", 19, 6,
-        [
-            "Fitting high-density rockwool / mineral wool insulation shells on steam headers",
-            "Applying preformed mineral wool thermal lagging on high-temp steam piping",
-            "Thermal insulation installation with mineral wool blankets on hot service pipe",
-        ]
-    ),
-    (
-        "Wrap and rivet aluminum weatherproofing cladding jacketing over insulated spools",
-        "2.3.06", 20, 6,
-        [
-            "Banding embossed aluminum sheet cladding and sealing jacketing overlaps",
-            "Installing aluminum weatherproofing jacketing with stainless pop rivets",
-            "Applying protective aluminum metal cladding over pipe insulation lagging",
-        ]
-    ),
-    (
-        "Apply cellular glass cold insulation and vapor barrier mastic on chilled piping",
-        "2.3.07", 20, 5,
-        [
-            "Fitting Foamglas cold insulation segments and applying vapor barrier elastomeric mastic",
-            "Cellular glass cryogenic insulation install with zero-permeance vapor seal",
-            "Installing rigid cellular glass insulation and multi-coat vapor barrier coating",
-        ]
-    ),
-    (
-        "Flange insulation kit (dielectric gasket & sleeves) installation for cathodic protection",
-        "2.3.08", 17, 3,
-        [
-            "Fitting dielectric isolation gasket, insulating sleeves and washers on flange",
-            "Installing cathodic protection insulating flange kit and checking electrical isolation",
-            "Mounting dielectric flange isolation set and verifying zero electrical continuity",
+            "Circulating hot flushing oil through bearing lines until ISO 4406 cleanliness met",
+            "High-velocity oil flush of machine lubrication circuit and Millipore patch check",
+            "Flushing compressor lube system with external pump cart and checking mesh screens",
         ]
     ),
 ]
 
-# Format: (canonical_action, wbs_subcode, phase_offset_weeks, duration_days, [paraphrase_variants])
 ELEC_WORK_PACKAGES = [
-    # Cable Containment, Raceways & Conduits (Phase: Weeks 8 - 18)
     (
         "Install heavy-duty perforated galvanized steel cable trays (450mm width)",
-        "3.1.01", 8, 7,
+        "1.01", 6, 6,
         [
-            "Fixing 450mm wide perforated hot-dip galvanized cable tray runs on trapeze hangers",
-            "Mounting galvanized perforated cable trays (450mm) and connecting coupler plates",
-            "Installing 450mm HDG cable containment trays with splice plate hardware",
+            "Mounting 450mm hot-dip galvanized perforated cable trays on trapeze supports",
+            "Erecting galvanized steel cable raceway channels and fitting splice plates",
+            "Fixing 450mm perforated electrical cable trays along overhead support steel",
         ]
     ),
     (
         "Erect vertical ladder cable trays and weld structural support brackets",
-        "3.1.02", 9, 6,
+        "1.02", 7, 5,
         [
-            "Welding unistrut brackets and hanging vertical ladder-type cable riser trays",
-            "Installing vertical ladder cable racking and fabricating cantilever supports",
-            "Mounting vertical cable ladder raceway and bolting structural wall brackets",
+            "Installing heavy-duty ladder-type cable trays on substation riser walls",
+            "Welding Unistrut support brackets and fixing vertical cable ladder runs",
+            "Mounting vertical ladder cable trays with heavy duty clamping brackets",
         ]
     ),
     (
         "Bend, thread and mount rigid galvanized steel (RGS) conduit runs",
-        "3.1.03", 10, 6,
+        "1.03", 8, 5,
         [
-            "Field bending and threading 2\" heavy wall RGS electrical conduit lines",
-            "Installing rigid galvanized steel (RGS) conduits with explosion-proof unions",
-            "Running threaded RGS conduit lines and mounting saddle clamps to structure",
+            "Field bending 2-inch RGS rigid steel conduits and securing with strut clamps",
+            "Threading and installing heavy-wall galvanized steel conduit raceways",
+            "Routing rigid metal conduit (RMC) runs with explosion-proof union fittings",
         ]
     ),
     (
         "Install explosion-proof Class 1 Div 2 junction boxes and Chico compound seal fittings",
-        "3.1.04", 11, 5,
+        "1.04", 9, 4,
         [
-            "Mounting hazardous-area Ex-d terminal enclosures and pouring Chico sealing compound",
-            "Bolting explosion-proof junction boxes and filling conduit seal-offs with resin",
-            "Installing Class 1 Div 2 certified terminal boxes with seal fittings and compound",
+            "Mounting hazardous-area Ex-d junction boxes and pouring Chico EY sealing compound",
+            "Fixing certified explosion-proof terminal enclosures and packing barrier seals",
+            "Installing flameproof junction boxes and potting cable seals with Chico fiber/compound",
         ]
     ),
     (
         "Apply certified intumescent firestop mortar and pillows at cable wall penetrations",
-        "3.1.05", 14, 4,
+        "1.05", 10, 3,
         [
-            "Sealing cable tray transit wall openings with 2-hour intumescent firestop mortar",
-            "Packing intumescent fire-rated pillows and mastic into cable wall penetrations",
-            "Installing firestop barrier transit frames and intumescent compound at wall breaches",
+            "Packing cable transit openings with intumescent firestop pillows and mastic sealant",
+            "Installing 2-hour fire-rated cable penetration seals using intumescent mortar",
+            "Sealing substation wall cable penetrations with certified firestop elastomer foam",
         ]
     ),
     (
-        "Mount heavy stainless steel cable cleats and strapping on vertical riser tray runs",
-        "3.1.06", 12, 5,
+        "Pulling 33kV 3-core 240 sq mm MV armored cable through concrete duct bank",
+        "1.06", 11, 6,
         [
-            "Fixing trefoil and single SS cable cleats on vertical riser ladder trays",
-            "Fastening stainless steel short-circuit rated cable cleats on riser racks",
-            "Installing heavy-duty cable clamping cleats along vertical cable riser runs",
-        ]
-    ),
-
-    # Cable Pulling, Glanding & Termination (Phase: Weeks 12 - 22)
-    (
-        "Pull 3-core 240 sq mm 33kV copper armored power cable through trench and duct bank",
-        "3.2.01", 12, 7,
-        [
-            "Winch hauling 3C x 240mm2 33kV XLPE armored power feeder into outdoor trench",
-            "Pulling 33kV 3-core 240 sq mm MV armored cable through concrete duct bank",
-            "Hauling 33kV high-voltage power cable (3x240 sq mm) using motorized winch rollers",
-        ]
-    ),
-    (
-        "Pull 4-core 95 sq mm 415V low voltage power feed to motor control panel",
-        "3.2.02", 13, 5,
-        [
-            "Pulling 4C x 95mm2 415V LT armored supply cable from MCC to field motor",
-            "Hauling and laying 4-core 95 sq mm low voltage power feeder in cable tray",
-            "Routing 415V 4C-95sqmm copper power supply cable into local drive panel",
-        ]
-    ),
-    (
-        "Pull multi-pair overall screened signal instrumentation cable to DCS rack",
-        "3.2.03", 14, 6,
-        [
-            "Hauling multi-pair shielded twisted-pair (STP) analog instrument cable to DCS",
-            "Pulling 12-pair overall screened instrumentation cable to control room rack",
-            "Running multi-core screened signal cable through cable trays to marshalling cabinet",
-        ]
-    ),
-    (
-        "Cable dressing, stripping outer sheath and glanding using double-compression glands",
-        "3.2.04", 15, 6,
-        [
-            "Dressing armored cables into panels and making off nickel-plated double-compression glands",
-            "Cable armor stripping, sheath dressing and fitting brass Ex-d double compression glands",
-            "Terminating cable outer armor into double-compression weatherproof glands",
+            "Winched pulling of 33kV XLPE insulated armored power feeder into duct bank",
+            "Cable puller winching 33kV 3C x 240mm2 copper armored cable through conduits",
+            "Installing 33kV high-voltage underground feeder cable into reinforced duct runs",
         ]
     ),
     (
         "Crimp tinned copper lugs onto power conductors using hydraulic crimping tool",
-        "3.2.05", 15, 4,
+        "1.07", 12, 4,
         [
-            "Hydraulic hex-die crimping of heavy-duty tinned copper lugs onto phase leads",
-            "Crimping tinned copper terminal lugs on power feeder cable cores",
-            "Pressing compression terminal lugs on power conductor ends using hydraulic tool",
+            "Hydraulic hex-die crimping of heavy tinned copper compression terminals on cables",
+            "Crimping cable lug connectors on large phase conductors with 12-ton tool",
+            "Terminating power cable cores with hydraulic compression barrel lugs",
         ]
     ),
     (
-        "Terminate power leads and control wiring onto terminal strips inside MCC breaker cubicle",
-        "3.2.06", 16, 5,
+        "Making off 33kV high voltage stress cone cold shrink terminations on XLPE cable",
+        "1.08", 13, 5,
         [
-            "Landing power conductors and ferruled control wires on MCC starter terminal blocks",
-            "Wiring motor power leads and auxiliary control interlocks inside MCC compartment",
-            "Terminating phase tails and numbered control wiring inside switchgear cubicle",
-        ]
-    ),
-    (
-        "Install stress cone terminations and cold shrink kits on 33kV XLPE cables",
-        "3.2.07", 16, 4,
-        [
-            "Fitting 33kV cold-shrink stress relief termination kits on high-voltage cable ends",
-            "Making off 33kV high voltage stress cone cold shrink terminations on XLPE cable",
-            "Installing MV cold shrink indoor termination kits and grounding screen shields",
-        ]
-    ),
-    (
-        "Point-to-point ring-out continuity verification and wire ferrule alphanumeric check",
-        "3.2.08", 17, 4,
-        [
-            "Conducting loop continuity ring-out and cross-checking wire sleeve ferrule tags",
-            "Point-to-point wire check and verification against electrical schematic drawings",
-            "Electrical wire ring-out testing and ferrule labeling confirmation across terminals",
-        ]
-    ),
-    (
-        "Terminate emergency trip push button interconnecting loop cable to ESD panel",
-        "3.2.09", 17, 3,
-        [
-            "Wiring field emergency shutdown (ESD) push-button loop directly to safety PLC",
-            "Terminating field ESD trip button contacts onto failsafe emergency panel strip",
-            "Hooking up field emergency stop circuit wiring to central ESD logic rack",
-        ]
-    ),
-    (
-        "Pull DC battery backup supply cables from rack to UPS inverter cabinet",
-        "3.2.10", 15, 4,
-        [
-            "Hauling heavy DC battery bank feed cables into uninterrupted power supply (UPS)",
-            "Pulling DC positive/negative power supply cables from battery room to inverter",
-            "Routing heavy-gauge DC battery supply conductors into main UPS cabinet",
-        ]
-    ),
-
-    # Switchgear, Transformers & Commissioning (Phase: Weeks 14 - 24)
-    (
-        "Unload, position, and anchor 33/11kV oil-immersed power transformer onto concrete pad",
-        "3.3.01", 14, 5,
-        [
-            "Rigging and skidding 33/11kV mineral oil transformer onto foundation plinth",
-            "Positioning main 33/11kV power transformer on foundation and tightening hold-down bolts",
-            "Landing oil-cooled step-down transformer onto embed plates and securing anchors",
+            "Assembling 33kV cold-shrink stress control termination kits on MV feeder cores",
+            "Installing cold-shrink outdoor stress cone terminations on 33kV XLPE cables",
+            "Terminating 33kV high-voltage shielded cable ends with cold shrink kits",
         ]
     ),
     (
         "Erect 11kV vacuum circuit breaker switchgear cubicles and bolt copper busbar joints",
-        "3.3.02", 15, 6,
+        "1.09", 14, 6,
         [
-            "Assembling 11kV VCB switchboard lineup and torque-bolting main copper busbar links",
-            "Installing 11kV vacuum switchgear panels and connecting internal busbar splices",
-            "Setting 11kV metal-clad switchgear lineup and bolting phase busbar joints",
-        ]
-    ),
-    (
-        "Torque check and mark all internal phase busbar bolted connections with torque seal",
-        "3.3.03", 16, 4,
-        [
-            "Calibrated torque verification and torque-seal paint marking on all busbar joints",
-            "Torque checking switchgear bus joints and applying witness paint marks",
-            "Checking busbar bolt torque with calibrated tool and applying torque stripe lacquer",
-        ]
-    ),
-    (
-        "Install battery bank racks, mount 2V lead-acid cells, and torque cell interlinks",
-        "3.3.04", 16, 5,
-        [
-            "Assembling seismic battery stands, placing 2V flooded cells and bolting lead links",
-            "Mounting 2V stationary battery cells on tier racks and torquing terminal straps",
-            "Erecting DC battery room racking, placing cells and applying anti-corrosion paste",
-        ]
-    ),
-    (
-        "Position and bolt Low Voltage Motor Control Center (MCC) panel suite on floor channels",
-        "3.3.05", 15, 6,
-        [
-            "Rigging and anchoring LV MCC switchboard assembly onto embedded floor channels",
-            "Positioning low voltage MCC panel enclosure and tack-welding base channel irons",
-            "Setting multi-tier LV Motor Control Center lineup over cable cellar opening",
-        ]
-    ),
-    (
-        "Install variable speed drive (VFD) cabinets and wire internal bypass contactors",
-        "3.3.06", 17, 5,
-        [
-            "Erecting VFD drive enclosure cubicles and wiring motor bypass contactor circuits",
-            "Mounting VFD drive panels and terminating power input/output bypass links",
-            "Installing variable frequency drive units and wiring internal control logic",
-        ]
-    ),
-    (
-        "Drive copper-bonded ground rods and measure individual soil earth resistance",
-        "3.3.07", 10, 4,
-        [
-            "Driving 3-meter copper-clad earth rods and testing resistance with 3-pole tester",
-            "Sinking copper-bonded grounding electrodes and taking fall-of-potential readings",
-            "Installing grounding rods and measuring individual pit ground resistance",
-        ]
-    ),
-    (
-        "Cadweld exothermic bond 50x6mm bare copper ground tape to plant grounding grid",
-        "3.3.08", 11, 5,
-        [
-            "Thermite Cadweld exothermic welding of 50x6mm copper tape to perimeter ground loop",
-            "Executing exothermic Cadweld connections between ground tape and main earth grid",
-            "Cadwelding bare copper earthing ribbon to buried earthing mesh conductors",
+            "Positioning 11kV VCB switchgear lineup and torque-bolting main copper busbars",
+            "Setting indoor medium-voltage switchboard panels and linking busbar sections",
+            "Rigging and bolting 11kV metal-clad vacuum breaker panels in switchgear room",
         ]
     ),
     (
         "Perform 5kV / 1kV Megger insulation resistance testing on power feeder cables",
-        "3.3.09", 18, 3,
+        "1.10", 15, 3,
         [
-            "Megger insulation resistance testing (5kV/1kV DC) on phase-to-phase and phase-to-earth",
-            "Insulation resistance Megger diagnostic testing on all power cable cores",
-            "Conducting high voltage Megger test on power cables and logging insulation values",
+            "Megger insulation resistance testing of MV and LV cables up to 5000V DC",
+            "Testing conductor-to-conductor and phase-to-ground insulation resistance with Megger",
+            "Measuring dielectric resistance on power cables using calibrated Megohmmeter",
+        ]
+    ),
+]
+
+PIPING_WORK_PACKAGES = [
+    (
+        "Spool pre-fabrication, bevelling and dimensional check in site workshop",
+        "1.01", 4, 8,
+        [
+            "Shop fabrication, edge bevelling, and fit-up inspection of carbon steel pipe spools",
+            "Pre-fabricating heavy-wall pipe spools and verifying spool dimensions against isometric",
+            "Cutting, beveling, and workshop tacking of process piping isometric spools",
         ]
     ),
     (
-        "Secondary current injection testing of numerical protection relays (50/51/51N)",
-        "3.3.10", 19, 4,
+        "Rig, crane hoist and erect pre-fabricated carbon steel process pipe spools",
+        "1.02", 6, 7,
         [
-            "Testing micro-processor protection relays with Omicron secondary current injection",
-            "Calibrating overcurrent and earth fault protection curves using test injection kit",
-            "Injecting secondary current to verify 50/51/51N protection relay trip timing",
+            "Crane lifting and positioning pre-fab pipe spools onto pipe rack steel structure",
+            "Rigging and hoisting carbon steel spool assemblies onto pipe rack support tiers",
+            "Lifting and aligning prefabricated piping sections on structural rack bents",
         ]
     ),
     (
-        "Transformer turns ratio (TTR), vector group, and winding resistance diagnostic testing",
-        "3.3.11", 19, 4,
+        "Spool fit-up, root pass TIG welding and hot-pass low hydrogen filling",
+        "1.03", 7, 6,
         [
-            "Conducting TTR ratio test, winding resistance and vector phase angle diagnostics",
-            "Transformer diagnostic tests: turns ratio, DC winding resistance and insulation PF",
-            "Testing power transformer turns ratio, magnetizing current and vector group",
+            "GTAW root welding followed by SMAW low-hydrogen hot and filler passes on pipe joint",
+            "Pipe butt joint alignment, argon backing purge, and multi-pass field welding",
+            "Fitting up pipe bevels, root TIG weld run, and heavy filler weld deposit",
         ]
     ),
     (
-        "High potential (Hi-Pot) DC / VLF withstand dielectric test on 33kV MV cable run",
-        "3.3.12", 20, 3,
+        "Rig and erect process pipe spools and install structural guide supports",
+        "1.04", 11, 4,
         [
-            "Very Low Frequency (VLF) Hi-Pot dielectric withstand test on 33kV cable cores",
-            "Performing 0.1Hz VLF high-voltage dielectric proof test on 33kV feeder",
-            "Hi-Pot dielectric overpotential test on 33kV medium voltage cable circuit",
+            "Rig and erect process line spools and lock pipe guide shoes",
+            "Erecting carbon steel pipe spools onto rack support beams",
+            "Hoisting and setting piping run with temporary drift alignment pins",
         ]
     ),
     (
-        "Mount and wire LED floodlight luminaires on 25m high-mast yard lighting tower",
-        "3.3.13", 21, 5,
+        "Fabricate carbon steel spools in fabrication shop",
+        "1.05", 5, 6,
         [
-            "Installing multi-directional LED floodlight fixtures on high mast lighting ring",
-            "Mounting high-efficiency LED luminaires and connecting trailing power harness",
-            "Fixing LED flood lamps on high mast tower headframe and aiming lighting beams",
+            "Shop welding and cutting of carbon steel pipe spools according to isometric",
+            "Pre-fabrication and dimensional check of spool components in shop",
+            "Fabricating piping sections and welding flanged spool assemblies",
         ]
     ),
     (
-        "Install and calibrate field smart pressure and temperature transmitters with HART communicator",
-        "3.3.14", 21, 5,
+        "Full penetration butt welding on heavy-wall alloy process piping",
+        "1.06", 8, 7,
         [
-            "Field calibration and 4-20mA loop trimming of smart transmitters using HART 475",
-            "Mounting pressure/temp transmitters on pipe stanchions and verifying HART ranges",
-            "Installing field process transmitters, tagging and performing 5-point HART check",
+            "Executing full penetration groove welds on P91/P22 alloy piping with preheating",
+            "Multi-pass high-pressure butt welding on thick-wall chrome-moly alloy lines",
+            "Alloy process line field welding with calibrated induction preheat coils",
+        ]
+    ),
+    (
+        "Controlled electric resistance Post-Weld Heat Treatment (PWHT) and chart recording",
+        "1.07", 9, 4,
+        [
+            "Performing localized ceramic heating pad PWHT with 12-point temperature logging",
+            "Post-weld heat treatment stress relieving on pipe joints with continuous recorder",
+            "Controlled thermal soaking and cool-down PWHT on heavy alloy pipe welds",
+        ]
+    ),
+    (
+        "100% Radiographic Testing (RT) and Phase Array Ultrasonic Testing (PAUT) on pipe field welds",
+        "1.08", 10, 5,
+        [
+            "Gamma radiography examination and PAUT ultrasonic volumetric inspection of butt welds",
+            "Non-destructive NDT inspection (radiography & ultrasonic scans) on piping weld joints",
+            "Shooting industrial radiographic films on field circumferential pipe welds",
+        ]
+    ),
+    (
+        "Install variable spring pipe hangers, constant load supports, and PTFE sliding guide shoes",
+        "1.09", 11, 5,
+        [
+            "Mounting variable spring canisters and adjusting turnbuckles to cold load preset",
+            "Fitting PTFE Teflon sliding pipe shoes and structural stop guides beneath lines",
+            "Installing constant-effort spring hangers and setting travel lock pins",
+        ]
+    ),
+    (
+        "Flange bolt-up, gasket placement, and multi-stage torque tensioning per ASME PCC-1",
+        "1.10", 12, 4,
+        [
+            "Cross-pattern torque tightening of Class 300/600 raised-face flanges with spiral gaskets",
+            "Hydraulic stud tensioning and star-pattern bolt torqueing in compliance with ASME PCC-1",
+            "Fitting flexitallic spiral wound gaskets and tightening flange studs to torque spec",
+        ]
+    ),
+    (
+        "High-pressure hydrostatic pressure test of completed piping test pack",
+        "1.11", 13, 3,
+        [
+            "Filling, venting, and pressurizing piping circuit to 1.5x design rating with clean water",
+            "Hydrotesting piping test package to proof test pressure and holding for 2-hour inspection",
+            "Hydrostatic pressure test on piping spool package with calibrated digital deadweight tester",
+        ]
+    ),
+    (
+        "Dewatering, dry compressed air blowing, and line reinstatement after hydrotest",
+        "1.12", 14, 3,
+        [
+            "Draining hydrotest water, pigging, and high-velocity oil-free air drying of piping lines",
+            "Line dewatering, dry air blowing to -40°C dewpoint, and replacing temporary test blinds",
+            "Reinstating permanent gaskets, orifice plates, and control valves post-hydrotest",
+        ]
+    ),
+    (
+        "Chemical degreasing, acid pickling, and citric passivation of stainless steel lines",
+        "1.13", 14, 5,
+        [
+            "Circulating alkaline degreaser and citric acid pickle solution through SS pipe loops",
+            "Chemical cleaning, pickling, and passivation of stainless steel process piping",
+            "Flushing pipe loop with passivating solution and performing ferricyanide wipe test",
+        ]
+    ),
+    (
+        "Pneumatic leak testing with 95/5 Nitrogen-Helium tracer gas and detector sniffing",
+        "1.14", 15, 3,
+        [
+            "Pressurizing line with N2/He tracer gas mixture and sniffing flanged joints for leaks",
+            "Pneumatic tightness testing with nitrogen and mass spectrometer helium detector",
+            "Tracer gas leak search across all mechanical flanged and threaded connections",
+        ]
+    ),
+    (
+        "Cold tie-in golden weld fit-up and final non-destructive examination",
+        "1.15", 16, 4,
+        [
+            "Golden tie-in weld fit-up on live unit battery limit and 100% PAUT/TOFD inspection",
+            "Executing tie-in golden weld between new unit header and existing plant manifold",
+            "Precision bevel fit-up for tie-in weld and non-destructive surface / volumetric checks",
+        ]
+    ),
+    (
+        "Install in-line process check valves, ball valves, and safety relief valves (PSV)",
+        "1.16", 17, 5,
+        [
+            "Mounting flanged ball valves, wafer check valves, and certified pressure relief valves",
+            "Rigging and bolting heavy in-line process valves with tested spiral gaskets",
+            "Installing flanged pressure safety relief valves (PSV) and bolting discharge tailpipes",
+        ]
+    ),
+]
+
+INST_WORK_PACKAGES = [
+    (
+        "Install and calibrate field smart pressure and differential transmitters with HART 475",
+        "1.01", 14, 5,
+        [
+            "Field 5-point calibration and 4-20mA loop verification of smart pressure transmitters",
+            "Mounting differential pressure transmitters on 2-inch stanchions and trimming HART loops",
+            "Installing smart process transmitters, setting LRV/URV spans and zero-point calibration",
+        ]
+    ),
+    (
+        "Bend, lay and pressure-test 1/2-inch 316SS instrument impulse tubing runs",
+        "1.02", 15, 6,
+        [
+            "Precision bending of 1/2-inch stainless steel tubing and Swagelok compression fittings",
+            "Installing 316SS instrument impulse lines from root valves to 5-valve manifolds",
+            "Routing instrument tubing on angle trays and hydrotesting tubing at 1.5x design",
+        ]
+    ),
+    (
+        "Route, dress, and land multi-pair instrument signal cables inside DCS marshalling cabinet",
+        "1.03", 16, 5,
+        [
+            "Glanding, ferrule dressing, and landing shielded twisted pair cables on DCS terminal strips",
+            "Terminating instrument multi-core cables and connecting shield drain wires in cabinet",
+            "Dressing wiring bundles and landing analog input signals onto marshalling terminals",
+        ]
+    ),
+    (
+        "Mount and optical-align triple IR (IR3) flame detectors and toxic H2S sensors",
+        "1.04", 17, 4,
+        [
+            "Installing multi-spectrum IR3 flame sensors and aiming optical field of view",
+            "Mounting toxic H2S electrochemical gas detectors and conducting zero/span bump gas check",
+            "Fixing optical flame detector heads with swivel brackets and testing with test lamp",
+        ]
+    ),
+    (
+        "Control valve actuator mounting, smart positioner auto-tune, and stroke signature test",
+        "1.05", 18, 4,
+        [
+            "Mounting pneumatic diaphragm actuator, auto-tuning smart digital valve controller",
+            "Calibrating control valve smart positioner and recording dynamic step-response curve",
+            "Stroking pneumatic control valve 0-100% and testing fail-safe spring return speed",
+        ]
+    ),
+    (
+        "Install guided-wave radar level gauges on tank stilling wells and configure dielectric constants",
+        "1.06", 18, 5,
+        [
+            "Mounting high-frequency radar level transmitters on tank nozzles and configuring echo curve",
+            "Installing guided wave level probe and suppressing false echo reflections in stilling pipe",
+            "Flange mounting radar tank level gauge and validating 4-20mA output against dip tape",
         ]
     ),
     (
         "Cold loop check and signal verification between field instruments and DCS I/O cards",
-        "3.3.15", 22, 6,
+        "1.07", 19, 6,
         [
-            "End-to-end loop checking from field sensor terminals to central DCS operator screen",
-            "Injecting 4-20mA simulated signals to verify DCS graphic display and alarm trips",
-            "Full loop test and signal path validation from field transmitter to DCS console",
+            "Simulating 4-20mA signals at field transmitters and verifying DCS graphics and alarm trips",
+            "End-to-end cold loop check from field transmitter terminals to control room operator screen",
+            "Loop checking analog/digital channels from field junction box to DCS I/O module",
+        ]
+    ),
+    (
+        "Emergency Shutdown (ESD) interlock trip loop validation and solenoid drop test",
+        "1.08", 20, 4,
+        [
+            "Testing 24VDC ESD solenoid valves and verifying emergency shutdown trip interlock logic",
+            "Executing functional trip test of Safety Instrumented System (SIS) logic interlocks",
+            "De-energizing ESD trip coils to verify fast-acting emergency shutdown valve closure",
+        ]
+    ),
+    (
+        "Install and calibrate ultrasonic custody transfer flow metering skids",
+        "1.09", 21, 5,
+        [
+            "Mounting multi-path ultrasonic flowmeters and wiring flow computer telemetry racks",
+            "Calibrating acoustic transducers on custody transfer meter loop and checking zero flow",
+            "Installing ultrasonic gas/liquid metering skid and verifying digital communication link",
+        ]
+    ),
+    (
+        "Continuous emission monitoring system (CEMS) probe installation and calibration gas span check",
+        "1.10", 22, 5,
+        [
+            "Installing heated sampling probe on stack nozzle and conducting span gas zero/span check",
+            "Mounting stack gas analyzer sampling system and validating NOx/SO2 optical sensors",
+            "Connecting heated sample line and running EPA audit calibration gases through CEMS",
+        ]
+    ),
+]
+
+HSE_WORK_PACKAGES = [
+    (
+        "Install firewater post hydrants, landing valves, and perform hydrostatic flow rate testing",
+        "1.01", 6, 5,
+        [
+            "Bolting up cast-iron wet barrel fire hydrants and measuring discharge flow and static head",
+            "Installing 4-inch underground fire hydrant standpipes and conducting Pitot tube flow tests",
+            "Mounting firewater hydrant assemblies, hose cabinets, and performing full-pressure flush",
+        ]
+    ),
+    (
+        "Plumb and test emergency safety showers, eyewashes, and audio-visual flow alarm switches",
+        "1.02", 8, 4,
+        [
+            "Connecting potable supply to combination safety shower/eyewash and testing flow switches",
+            "Plumbing stainless steel emergency eye wash station and verifying warm water delivery",
+            "Testing safety shower flow rate (75 L/min) and verifying audible alarm siren activation",
+        ]
+    ),
+    (
+        "Install automatic deluge valve skid, trim piping, and test pilot detection line response",
+        "1.03", 10, 5,
+        [
+            "Erecting transformer deluge water spray skid, resetting clapper valve and testing trip pilot",
+            "Mounting high-velocity water deluge spray nozzles and testing automatic solenoid actuation",
+            "Hydrotesting deluge trim piping and conducting dry pneumatic trip test on deluge system",
+        ]
+    ),
+    (
+        "Erect, inspect, and certify tube-and-coupler scaffolding with daily green scaffold tag audits",
+        "1.04", 4, 12,
+        [
+            "Assembling modular heavy-duty steel scaffolding and issuing Scafftag safety certificates",
+            "Erecting working access scaffolds with toe-boards, double handrails, and ladder gates",
+            "Performing weekly structural scaffold safety inspections and signing green inspection tags",
+        ]
+    ),
+    (
+        "Perform continuous 4-gas atmospheric monitoring and issue Confined Space Entry permits",
+        "1.05", 8, 14,
+        [
+            "Conducting multi-gas (O2, LEL, H2S, CO) sniffer tests at vessel manways and issuing PTW",
+            "Pre-entry atmospheric gas testing of column vessel and logging gas levels every 2 hours",
+            "Operating continuous multi-gas suction monitors for authorized confined space workers",
+        ]
+    ),
+    (
+        "Survey radiation dose rates and set up physical barricading for gamma NDE radiography",
+        "1.06", 11, 4,
+        [
+            "Setting up flashing radiation warning beacons, yellow rope barricades and Geiger surveys",
+            "Establishing controlled radiation exclusion zone (2.5 uSv/h boundary) for Iridium-192 NDT",
+            "Conducting gamma radiography boundary radiation sweeps with calibrated survey meters",
+        ]
+    ),
+    (
+        "Install wind socks, illuminated evacuation route maps, and solar emergency beacon lighting",
+        "1.07", 12, 4,
+        [
+            "Mounting illuminated aviation wind socks on mast poles and installing muster point signs",
+            "Erecting reflective plant evacuation route signage and photoluminescent muster markers",
+            "Installing solar-powered emergency strobe beacons and weather-resistant evacuation maps",
+        ]
+    ),
+    (
+        "Inspection and hydrostatic leak testing of hazardous chemical bund secondary containment liners",
+        "1.08", 13, 5,
+        [
+            "Testing chemical bund secondary containment HDPE geomembrane with spark leak detector",
+            "Water retention testing of acid dosing bund containment and checking sumps for seepage",
+            "Inspecting chemical-resistant epoxy bund coating and conducting 24-hr hydrostatic water hold",
+        ]
+    ),
+    (
+        "Install high-expansion foam proportioner skid, bladder tank, and perform foam pour test",
+        "1.09", 15, 6,
+        [
+            "Positioning AFFF foam concentrate bladder tank, ratio controller, and testing foam quality",
+            "Mounting foam generator headers and conducting discharge pour test into containment area",
+            "Commissioning balanced pressure foam proportioning skid with water-foam solution tests",
+        ]
+    ),
+    (
+        "Setup self-contained breathing apparatus (SCBA) cascade manifold bank and cylinder recharge station",
+        "1.10", 16, 4,
+        [
+            "Installing 300-bar high-pressure breathable air cascade cylinders and breathing air lines",
+            "Setting up emergency escape breathing apparatus (EEBA) muster boxes and pressure gauges",
+            "Testing compressed breathing air quality (CGA Grade D) on mobile SCBA refill manifold",
         ]
     ),
 ]
 
 
 def generate_activities():
-    """Generate 750 realistic construction activities across Civil, Mechanical, and Electrical."""
+    """
+    Generate 890 realistic construction activities across all 6 PRD-defined disciplines:
+    - Civil (200 activities: ACT-CIV-0001 to ACT-CIV-0200)
+    - Mechanical (200 activities: ACT-MEC-0001 to ACT-MEC-0200)
+    - Electrical (200 activities: ACT-ELE-0001 to ACT-ELE-0200)
+    - Piping (180 activities: PIP-2401 to PIP-2580, including PIP-2458 Erect Line 24-XX)
+    - Instrumentation (60 activities: ACT-INS-0001 to ACT-INS-0060)
+    - HSE (50 activities: ACT-HSE-0001 to ACT-HSE-0050)
+    """
     activities = []
     base_project_start = date(2026, 6, 1)  # 6-month timeline: June 1, 2026 -> end of November 2026
 
     discipline_configs = [
-        ("Civil", "ACT-CIV-", "1", CIVIL_LOCATIONS, CIVIL_WORK_PACKAGES, 250),
-        ("Mechanical", "ACT-MEC-", "2", MECH_LOCATIONS, MECH_WORK_PACKAGES, 250),
-        ("Electrical", "ACT-ELE-", "3", ELEC_LOCATIONS, ELEC_WORK_PACKAGES, 250),
+        ("Civil", "ACT-CIV-", "1", CIVIL_LOCATIONS, CIVIL_WORK_PACKAGES, 200, 1),
+        ("Mechanical", "ACT-MEC-", "2", MECH_LOCATIONS, MECH_WORK_PACKAGES, 200, 1),
+        ("Electrical", "ACT-ELE-", "3", ELEC_LOCATIONS, ELEC_WORK_PACKAGES, 200, 1),
+        ("Piping", "PIP-", "4", PIPING_LOCATIONS, PIPING_WORK_PACKAGES, 180, 2401),
+        ("Instrumentation", "ACT-INS-", "5", INST_LOCATIONS, INST_WORK_PACKAGES, 60, 1),
+        ("HSE", "ACT-HSE-", "6", HSE_LOCATIONS, HSE_WORK_PACKAGES, 50, 1),
     ]
 
     total_generated = 0
 
-    for disc_name, prefix, disc_code, loc_list, work_pkg_list, target_count in discipline_configs:
+    for disc_name, prefix, disc_code, loc_list, work_pkg_list, target_count, start_offset in discipline_configs:
         num_pkgs = len(work_pkg_list)
         num_locs = len(loc_list)
 
         for i in range(1, target_count + 1):
-            act_id = f"{prefix}{i:04d}"
+            raw_id_num = start_offset + (i - 1)
+            act_id = f"{prefix}{raw_id_num:04d}"
+
             pkg_idx = (i - 1) % num_pkgs
             loc_idx = (i - 1 + (i // num_pkgs)) % num_locs
 
             loc_name, asset_tag, zone = loc_list[loc_idx]
             canonical_task, wbs_sub, phase_offset_weeks, duration_days, variants = work_pkg_list[pkg_idx]
 
-            # Generate hierarchical L5/L6 WBS Code: e.g. 1.2.04.15
+            # Generate hierarchical L5/L6 WBS Code: e.g. 1.1.04.15
             wbs_code = f"{disc_code}.{wbs_sub}.{((i - 1) % 50) + 1:02d}"
 
             # Phrasing variation logic:
-            # Approx 10-15% of entries get distinct semantic paraphrases (shuffled order, field jargon, different sentence structure)
-            # The remaining ~85-90% follow natural standard field descriptions.
-            is_paraphrase_candidate = (i % 7 == 0) or (i % 13 == 0)  # ~15%
+            # Approx 10-15% of entries get distinct semantic paraphrases
+            is_paraphrase_candidate = (i % 7 == 0) or (i % 13 == 0)
 
             if is_paraphrase_candidate and variants:
                 chosen_variant = variants[(i + loc_idx) % len(variants)]
-                # Add natural context tags
                 style_roll = i % 3
                 if style_roll == 0:
                     description = f"{chosen_variant} - {loc_name} ({asset_tag})"
@@ -1078,7 +923,6 @@ def generate_activities():
                 else:
                     description = f"{chosen_variant} [{loc_name}]"
             else:
-                # Standard clear engineering formats
                 style_roll = (i + loc_idx) % 4
                 if style_roll == 0:
                     description = f"{canonical_task} for {asset_tag} at {loc_name}"
@@ -1090,10 +934,8 @@ def generate_activities():
                     description = f"{canonical_task} ({asset_tag}, {loc_name})"
 
             # Spread dates realistically across a 6-month (26 weeks) timeline
-            # Each package has a base phase_offset_weeks, plus slight staggering based on index
-            stagger_days = ((i * 3) % 21) - 5  # -5 to +15 days stagger
+            stagger_days = ((i * 3) % 21) - 5
             week_start_offset = phase_offset_weeks * 7 + stagger_days
-            # Clamp between day 0 and day 165
             start_day_offset = max(0, min(165, week_start_offset))
 
             duration = max(2, min(24, duration_days + ((i % 5) - 2)))
@@ -1101,16 +943,9 @@ def generate_activities():
             planned_end = planned_start + timedelta(days=duration)
 
             # Assign realistic status based on schedule progression:
-            # Assume simulation reference date is around mid-August 2026 (day ~75 of 180)
-            # Activities finishing before day 60: mostly COMPLETED
             if planned_end <= date(2026, 8, 10):
-                # Early activities
-                if i % 11 == 0:
-                    status = "DELAYED"
-                else:
-                    status = "COMPLETED"
+                status = "DELAYED" if (i % 11 == 0) else "COMPLETED"
             elif planned_start <= date(2026, 8, 25) <= planned_end:
-                # Current active window
                 if i % 5 == 0:
                     status = "DELAYED"
                 elif i % 4 == 0:
@@ -1118,16 +953,35 @@ def generate_activities():
                 else:
                     status = "IN_PROGRESS"
             elif planned_start > date(2026, 8, 25):
-                # Future activities
-                if i % 17 == 0:
-                    status = "DELAYED"  # Pre-requisite delayed
-                else:
-                    status = "NOT_STARTED"
+                status = "DELAYED" if (i % 17 == 0) else "NOT_STARTED"
             else:
-                if i % 6 == 0:
-                    status = "DELAYED"
-                else:
-                    status = "IN_PROGRESS"
+                status = "DELAYED" if (i % 6 == 0) else "IN_PROGRESS"
+
+            # PRD Section 22 Headline Demo Cases:
+            if act_id == "PIP-2458":
+                description = "Erect Line 24-XX"
+                loc_name = "North Unit - Process Train A"
+                asset_tag = "Line 24-XX"
+                planned_start = date(2026, 8, 20)
+                planned_end = date(2026, 8, 23)
+                status = "IN_PROGRESS"
+                wbs_code = "4.1.04.58"
+            elif act_id == "PIP-2512":
+                description = "Fabricate Line 24-XX"
+                loc_name = "North Unit - Process Train A"
+                asset_tag = "Line 24-XX"
+                planned_start = date(2026, 8, 1)
+                planned_end = date(2026, 8, 15)
+                status = "COMPLETED"
+                wbs_code = "4.1.05.12"
+            elif act_id == "PIP-2544":
+                description = "Hydrotest Line 24-XX"
+                loc_name = "North Unit - Process Train A"
+                asset_tag = "Line 24-XX"
+                planned_start = date(2026, 8, 26)
+                planned_end = date(2026, 8, 29)
+                status = "NOT_STARTED"
+                wbs_code = "4.1.11.44"
 
             activities.append({
                 "activity_id": act_id,
