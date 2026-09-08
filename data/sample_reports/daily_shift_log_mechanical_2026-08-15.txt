@@ -1,0 +1,39 @@
+PROGRESSBRIDGE AI - SHIFT LOG
+DISCIPLINE: Mechanical, Equipment Rigging & Pressure Piping
+DATE: 2026-08-15 | SHIFT: Day (07:00 - 18:30)
+FACILITY: OIL Demo Refinery Expansion - Process Area
+REPORTING SUPERVISOR: Vikram Sengupta, Lead Piping & Rigging Supervisor
+
+1. HEAVY EQUIPMENT RIGGING:
+- Shell-and-Tube Exchanger Lift:
+  Mobilized 150-ton mobile crane at Process Train A. Successfully lifted the horizontal shell-and-tube exchanger (V-101) and set it dead center onto its concrete saddle supports.
+- Crude Pump Baseplate Setting:
+  Placed the centrifugal multistage crude charge pump skid (K-102A) onto the inertia block in the booster compression bay. Completed initial rough leveling with machinist shims.
+
+2. SPOOL FABRICATION & PIPING ERECTION:
+- Pipe Rack Tier 2 Spool Erection:
+  Crane hoisted the heavy pre-fab 12-inch schedule 80 carbon steel spool into position on the main pipe rack corridor tier 2 (PR-TIER-02). Secured temporarily with drift pins.
+- Stainless Steel Discharge Line Fit-Up:
+  Welders completed fit-up on the 8-inch 316L stainless line coming off exchanger battery south (E-201A/B). Tack-welded 4 butt joints under argon purge backing.
+- High-Pressure Gas Header Welding:
+  Two certified 6G pipe welders completed TIG root pass followed by SMAW hot and cap passes on HP gas header at Exchanger Battery North (E-202A/B). Visual inspection passed cleanly.
+- Cooling Water Valve Installation:
+  Installed three Class 600 isolation valves (two gate, one check) at cooling water station CW-PUMP-02. Replaced all temporary shipping seals with brand new graphite-filled spiral wound gaskets.
+- Flange Torquing:
+  Bolted up the 16-inch nozzle connection at tank farm manifold (MANIFOLD-TF01). Applied star-pattern tightening in 3 stages up to 480 N-m in strict accordance with ASME PCC-1 specs.
+- Pipe Support Teflon Shoes:
+  Mounted 14 Teflon/PTFE sliding guide shoes under process lines at instrument air skid (SKID-IA-01).
+
+3. PRESSURE TESTING & LAGGING:
+- Hydrotest Package Hold:
+  Filled and pressurized the crude manifold piping spool assembly to 150% rated design pressure (36.5 bar). Held hold period for 2 hours with zero pressure drop. Dewatered and blown dry with utility air.
+- Steam Header Lagging:
+  Thermal insulation gang fitted preformed rockwool / mineral wool blankets over 30 meters of overhead steam header line (HDR-STM-01).
+
+4. NON-PROJECT WORK:
+- Tool Container Relocation:
+  Rigging crew used 25-ton yard crane to relocate 2 empty tool shipping containers from laydown yard C to contractor staging area behind perimeter fence.
+
+REMARKS / CONSTRAINTS:
+- No crane breakdowns or rigging safety concerns.
+- Third-party NDT radiographer booked for 20:00 tonight to shoot films on HP gas header weld joints.

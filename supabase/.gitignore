@@ -2,7 +2,11 @@
 .branches
 .temp
 
-# dotenvx
+# dotenvx and env files
 .env.keys
+.env
+.env.*
 .env.local
 .env.*.local
+!.env.example
+!.env.*.example
