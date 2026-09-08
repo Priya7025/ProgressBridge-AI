@@ -12,8 +12,20 @@ import { createBrowserClient } from '@supabase/ssr'
  * - For handling interactive browser events (e.g. button clicks, form submissions on the client, realtime subscriptions).
  */
 export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
-  )
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!url || !anonKey) {
+    if (typeof window !== 'undefined') {
+      console.warn(
+        '[Supabase Client] NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is missing in browser runtime. Using build-time fallback.'
+      )
+    }
+    return createBrowserClient(
+      url || 'https://placeholder.supabase.co',
+      anonKey || 'placeholder-anon-key'
+    )
+  }
+
+  return createBrowserClient(url, anonKey)
 }
