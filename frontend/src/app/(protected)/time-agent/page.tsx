@@ -104,7 +104,7 @@ export default function TimeAgentPage() {
               Time Agent
             </h1>
             <p className="text-sm text-[#f1f2f3]/80 font-sans">
-              Tell me what happened at site — I'll log it.
+              Tell me what happened at site — I&apos;ll log it.
             </p>
           </div>
         </div>
