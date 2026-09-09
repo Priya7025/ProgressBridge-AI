@@ -24,6 +24,8 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 
+import { ThemeToggle } from '@/components/theme-toggle'
+
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -52,20 +54,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-8 bg-[#000000]">
-      <Card className="w-full max-w-md bg-[#111111] text-[#ffffff] border border-[#e2bf29] rounded-lg shadow-[rgba(0,0,0,0.5)_0px_4px_16px]">
+    <div className="relative flex min-h-screen items-center justify-center p-4 sm:p-8 bg-background text-foreground transition-colors duration-200">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+
+      <Card className="w-full max-w-md bg-card text-card-foreground border border-border/70 rounded-xl shadow-lg">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="font-heading font-sans font-['Helvetica_Neue',Helvetica,Arial,sans-serif] text-2xl font-bold tracking-tight text-[#e2bf29]">
+          <CardTitle className="font-heading font-sans text-2xl font-bold tracking-tight text-primary">
             Sign In
           </CardTitle>
-          <CardDescription className="text-[#f1f2f3]/80">
+          <CardDescription className="text-muted-foreground">
             Enter your credentials to access ProgressBridge AI.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-[#ffffff] font-bold">Email</Label>
+              <Label htmlFor="email" className="text-foreground font-semibold">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -73,11 +79,11 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-[#070707] border border-[#e2bf29]/50 text-[#ffffff] placeholder:text-zinc-500 rounded focus:border-[#e2bf29] focus:ring-1 focus:ring-[#e2bf29]"
+                className="bg-background border border-border/60 text-foreground placeholder:text-muted-foreground rounded-lg focus:border-primary focus:ring-1 focus:ring-primary"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-[#ffffff] font-bold">Password</Label>
+              <Label htmlFor="password" className="text-foreground font-semibold">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -85,18 +91,18 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-[#070707] border border-[#e2bf29]/50 text-[#ffffff] placeholder:text-zinc-500 rounded focus:border-[#e2bf29] focus:ring-1 focus:ring-[#e2bf29]"
+                className="bg-background border border-border/60 text-foreground placeholder:text-muted-foreground rounded-lg focus:border-primary focus:ring-1 focus:ring-primary"
               />
             </div>
             <Button
               type="submit"
-              className="w-full bg-[#e2bf29] text-[#111111] font-bold rounded shadow-[rgba(226,191,41,0.3)_0px_0px_12px] hover:bg-[#cbb024] cursor-pointer transition-all"
+              className="w-full bg-primary text-primary-foreground font-bold rounded-lg shadow-[rgba(226,191,41,0.3)_0px_0px_12px] hover:opacity-90 cursor-pointer transition-all h-10"
               disabled={loading}
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
             {error && (
-              <p className="text-sm text-[#b71511] font-bold text-center">
+              <p className="text-sm text-destructive font-bold text-center">
                 {error}
               </p>
             )}

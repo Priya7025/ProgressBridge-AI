@@ -45,15 +45,15 @@ function getStatusBadgeClass(status: string) {
   const normalized = (status || '').toUpperCase()
   switch (normalized) {
     case 'DELAYED':
-      return 'bg-[#b71511] text-white'
+      return 'bg-destructive text-white'
     case 'NOT_STARTED':
-      return 'bg-[#1a1a1a] text-[#f1f2f3] border border-zinc-700'
+      return 'bg-muted text-muted-foreground border border-border/60'
     case 'IN_PROGRESS':
-      return 'bg-[#337ab7] text-white'
+      return 'bg-accent text-white'
     case 'COMPLETED':
-      return 'bg-emerald-700 text-white'
+      return 'bg-emerald-600 text-white'
     default:
-      return 'bg-[#1a1a1a] text-[#ffffff] border border-[#e2bf29]/30'
+      return 'bg-muted text-foreground border border-primary/30'
   }
 }
 
@@ -90,25 +90,25 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
 
   if (initialActivities.length === 0) {
     return (
-      <div className="space-y-6 bg-[#000000] min-h-full p-6">
+      <div className="space-y-6 w-full">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-heading font-display text-[#e2bf29]">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight font-heading font-display text-primary">
             Activities
           </h1>
-          <p className="text-sm text-[#f1f2f3]/80 font-sans mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground font-sans mt-1">
             0 activities
           </p>
         </div>
 
-        <Card className="bg-[#111111] text-[#ffffff] border border-[#e2bf29]/30 rounded-lg p-12 text-center shadow-md">
+        <Card className="bg-card text-card-foreground border border-border/60 rounded-xl p-8 sm:p-12 text-center shadow-md">
           <CardContent className="space-y-4 pt-4">
-            <p className="text-base font-medium text-[#f1f2f3]/80">
+            <p className="text-sm sm:text-base font-medium text-muted-foreground">
               No activities yet — upload a schedule to get started
             </p>
             <div>
               <Link
                 href="/upload"
-                className="inline-flex items-center justify-center px-4 py-2 text-sm font-bold bg-[#e2bf29] text-[#111111] rounded-lg shadow-md hover:bg-[#c9a720] transition-colors"
+                className="inline-flex items-center justify-center px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg shadow-md hover:opacity-90 transition-opacity"
               >
                 Go to Upload
               </Link>
@@ -120,13 +120,13 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
   }
 
   return (
-    <div className="space-y-6 bg-[#000000] min-h-full p-4 sm:p-6">
+    <div className="space-y-6 w-full transition-colors duration-200">
       {/* PAGE HEADER */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-heading font-display text-[#e2bf29]">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight font-heading font-display text-primary">
           Activities
         </h1>
-        <p className="text-sm text-[#f1f2f3]/80 font-sans mt-1">
+        <p className="text-xs sm:text-sm text-muted-foreground font-sans mt-1">
           {filteredActivities.length === initialActivities.length
             ? `${initialActivities.length} activities`
             : `Showing ${filteredActivities.length} of ${initialActivities.length} activities`}
@@ -134,36 +134,36 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
       </div>
 
       {/* FILTER & SEARCH CONTROLS */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
         {/* Search Input */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#e2bf29]/70" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-primary" />
           <Input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by Activity ID or Description..."
-            className="pl-9 bg-[#070707] border-[#e2bf29]/30 text-foreground placeholder:text-muted-foreground focus-visible:ring-[#e2bf29]/50 focus-visible:border-[#e2bf29] h-10 text-sm rounded-lg"
+            className="pl-9 bg-background border-border/60 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/50 focus-visible:border-primary h-10 text-sm rounded-lg"
           />
         </div>
 
         {/* Discipline Filter Select */}
         <div className="relative w-full sm:w-56">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#e2bf29]/70">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-primary">
             <Filter className="size-4" />
           </div>
           <select
             value={selectedDiscipline}
             onChange={(e) => setSelectedDiscipline(e.target.value)}
-            className="w-full bg-[#070707] border border-[#e2bf29]/30 text-[#f1f2f3] pl-9 pr-4 h-10 text-sm rounded-lg focus:outline-none focus:border-[#e2bf29] focus:ring-2 focus:ring-[#e2bf29]/50 cursor-pointer appearance-none"
+            className="w-full bg-background border border-border/60 text-foreground pl-9 pr-4 h-10 text-sm rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/50 cursor-pointer appearance-none"
           >
             {DISCIPLINES.map((disc) => (
-              <option key={disc} value={disc} className="bg-[#111111] text-[#ffffff]">
+              <option key={disc} value={disc} className="bg-card text-foreground">
                 {disc === 'All' ? 'All Disciplines' : disc}
               </option>
             ))}
           </select>
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#f1f2f3]/50 text-xs">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground text-xs">
             ▼
           </div>
         </div>
@@ -171,19 +171,19 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
 
       {/* NO MATCHES FALLBACK */}
       {filteredActivities.length === 0 ? (
-        <Card className="bg-[#111111] text-[#ffffff] border border-[#e2bf29]/30 rounded-lg p-8 text-center shadow-md">
-          <p className="text-sm text-[#f1f2f3]/70 font-sans">
+        <Card className="bg-card text-card-foreground border border-border/60 rounded-xl p-8 text-center shadow-md">
+          <p className="text-sm text-muted-foreground font-sans">
             No activities match your current search or discipline filter.
           </p>
         </Card>
       ) : (
         <>
           {/* DESKTOP TABLE VIEW */}
-          <div className="hidden md:block bg-surface-container-low bg-[#070707] border border-[#e2bf29]/30 rounded-xl overflow-hidden shadow-lg">
+          <div className="hidden md:block bg-card border border-border/60 rounded-xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-[#111111] border-b border-[#e2bf29]/20 text-xs font-bold font-heading uppercase tracking-wider text-[#e2bf29]">
+                  <tr className="bg-muted/60 border-b border-border/40 text-xs font-bold font-heading uppercase tracking-wider text-primary">
                     <th className="py-3.5 px-4">Activity ID</th>
                     <th className="py-3.5 px-4">Description</th>
                     <th className="py-3.5 px-4">Discipline</th>
@@ -192,35 +192,35 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
                     <th className="py-3.5 px-4">Planned Finish</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#26241b]">
+                <tbody className="divide-y divide-border/40">
                   {filteredActivities.map((act) => (
                     <tr
                       key={act.id}
                       onClick={() => router.push(`/activities/${act.id}`)}
-                      className="hover:bg-[#111111] transition-colors cursor-pointer group"
+                      className="hover:bg-muted/40 transition-colors cursor-pointer group"
                     >
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <Link
                           href={`/activities/${act.id}`}
-                          className="font-mono font-bold text-[#e2bf29] group-hover:underline"
+                          className="font-mono font-bold text-primary group-hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {act.activity_id}
                         </Link>
                       </td>
-                      <td className="py-3.5 px-4 text-sm font-medium text-[#ffffff] max-w-xs lg:max-w-md truncate">
+                      <td className="py-3.5 px-4 text-sm font-medium text-foreground max-w-xs lg:max-w-md truncate">
                         {act.description}
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         {act.discipline ? (
-                          <span className="text-xs font-bold font-heading uppercase bg-[#111111] border border-[#e2bf29]/30 text-[#e2bf29] px-2.5 py-1 rounded">
+                          <span className="text-xs font-bold font-heading uppercase bg-muted border border-border/60 text-primary px-2.5 py-1 rounded">
                             {act.discipline}
                           </span>
                         ) : (
-                          <span className="text-xs text-[#f1f2f3]/40 italic">N/A</span>
+                          <span className="text-xs text-muted-foreground italic">N/A</span>
                         )}
                       </td>
-                      <td className="py-3.5 px-4 text-sm text-[#f1f2f3]/80 whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-sm text-muted-foreground whitespace-nowrap">
                         {act.location || '—'}
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
@@ -232,7 +232,7 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
                           {act.status.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-sm text-[#f1f2f3]/80 whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-sm text-muted-foreground whitespace-nowrap">
                         {formatDate(act.planned_finish)}
                       </td>
                     </tr>
@@ -248,10 +248,10 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
               <Link
                 key={act.id}
                 href={`/activities/${act.id}`}
-                className="block bg-[#070707] border border-[#e2bf29]/30 hover:border-[#e2bf29] p-4 rounded-xl shadow-md transition-all space-y-2.5"
+                className="block bg-card border border-border/60 hover:border-primary/80 p-4 rounded-xl shadow-sm transition-all space-y-2.5"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs font-bold text-[#e2bf29] tracking-wide">
+                  <span className="font-mono text-xs font-bold text-primary tracking-wide">
                     {act.activity_id}
                   </span>
                   <span
@@ -263,26 +263,26 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
                   </span>
                 </div>
 
-                <p className="text-sm font-semibold text-[#ffffff] leading-snug">
+                <p className="text-sm font-semibold text-foreground leading-snug">
                   {act.description}
                 </p>
 
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-[#f1f2f3]/70 pt-1 border-t border-[#26241b]">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground pt-1 border-t border-border/40">
                   {act.discipline && (
-                    <span className="flex items-center gap-1 text-[#e2bf29]">
+                    <span className="flex items-center gap-1 text-primary">
                       <Tag className="size-3" />
                       {act.discipline}
                     </span>
                   )}
                   {act.location && (
                     <span className="flex items-center gap-1">
-                      <MapPin className="size-3 text-[#f1f2f3]/50" />
+                      <MapPin className="size-3 text-muted-foreground" />
                       {act.location}
                     </span>
                   )}
                   {act.planned_finish && (
                     <span className="flex items-center gap-1 ml-auto">
-                      <Calendar className="size-3 text-[#f1f2f3]/50" />
+                      <Calendar className="size-3 text-muted-foreground" />
                       {formatDate(act.planned_finish)}
                     </span>
                   )}

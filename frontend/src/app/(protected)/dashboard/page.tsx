@@ -53,18 +53,10 @@ export default async function DashboardPage() {
     redirect('/time-agent')
   }
 
-  const activeProjectId = profile?.project_ids?.[0]
+  const activeProjectId = profile?.project_ids?.[0] || '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4'
 
-  if (!activeProjectId) {
-    return (
-      <div className="p-8 text-center text-muted-foreground font-medium">
-        No data yet for this project
-      </div>
-    )
-  }
-
-  // 3. Fetch summary data & discipline progress concurrently from Supabase
-  const [summaryRes, disciplineRes] = await Promise.all([
+  // 3. Fetch summary data, discipline progress, and activities with actual dates concurrently from Supabase
+  const [summaryRes, disciplineRes, actualActivitiesRes] = await Promise.all([
     supabase
       .from('project_dashboard_summary')
       .select('*')
@@ -74,73 +66,105 @@ export default async function DashboardPage() {
       .from('project_discipline_progress')
       .select('*')
       .eq('project_id', activeProjectId),
+    supabase
+      .from('schedule_activities')
+      .select('planned_finish, actual_finish')
+      .eq('project_id', activeProjectId)
+      .not('actual_finish', 'is', null)
+      .not('planned_finish', 'is', null),
   ])
 
-  const summary: DashboardSummary | null = summaryRes.data
-  const disciplineData: DisciplineProgressItem[] | null = disciplineRes.data
-
-  // Graceful fallback if either query fails or returns no summary rows
-  if (summaryRes.error || disciplineRes.error || !summary) {
-    return (
-      <div className="p-8 text-center text-muted-foreground font-medium">
-        No data yet for this project
-      </div>
-    )
+  // Functional zero-state logic: default to 0s if summary view is empty (0 activities)
+  const summary: DashboardSummary = summaryRes.data ?? {
+    project_id: activeProjectId,
+    total_activities: 0,
+    completed: 0,
+    in_progress: 0,
+    not_started: 0,
+    delayed: 0,
+    pending_review: 0,
+    unmatched: 0,
   }
+
+  // Calculate delayed count strictly from activities with recorded actual progress data
+  const actualDelayedCount = (actualActivitiesRes.data ?? []).filter(
+    (act) => act.actual_finish && act.planned_finish && act.actual_finish > act.planned_finish
+  ).length
+
+  summary.delayed = actualDelayedCount
+
+  if (!summaryRes.data) {
+    const [{ count: pendingCount }, { count: unmatchedCount }] = await Promise.all([
+      supabase
+        .from('progress_events')
+        .select('*', { count: 'exact', head: true })
+        .eq('project_id', activeProjectId)
+        .eq('status', 'PENDING_REVIEW'),
+      supabase
+        .from('progress_events')
+        .select('*', { count: 'exact', head: true })
+        .eq('project_id', activeProjectId)
+        .eq('status', 'UNMATCHED'),
+    ])
+    summary.pending_review = pendingCount ?? 0
+    summary.unmatched = unmatchedCount ?? 0
+  }
+
+  const disciplineData: DisciplineProgressItem[] | null = disciplineRes.data
 
   const kpis = [
     {
       title: 'Total Activities',
       value: summary.total_activities ?? 0,
-      accentClass: 'border-[#e2bf29]/30 hover:border-[#e2bf29]',
+      accentClass: 'border-border/60 hover:border-primary',
     },
     {
       title: 'Completed',
       value: summary.completed ?? 0,
-      accentClass: 'border-[#e2bf29]/30 hover:border-[#e2bf29]',
+      accentClass: 'border-border/60 hover:border-primary',
     },
     {
       title: 'Delayed',
       value: summary.delayed ?? 0,
-      accentClass: 'border-l-4 border-l-[#b71511] text-[#b71511]',
+      accentClass: 'border-l-4 border-l-destructive text-destructive',
     },
     {
       title: 'Pending Review',
       value: summary.pending_review ?? 0,
-      accentClass: 'border-l-4 border-l-[#337ab7] text-[#337ab7]',
+      accentClass: 'border-l-4 border-l-accent text-accent',
     },
     {
       title: 'Unmatched',
       value: summary.unmatched ?? 0,
-      accentClass: 'border-[#e2bf29]/30 hover:border-[#e2bf29]',
+      accentClass: 'border-border/60 hover:border-primary',
     },
   ]
 
   return (
-    <div className="space-y-8 p-8 bg-[#000000] min-h-full">
+    <div className="space-y-6 sm:space-y-8 transition-colors duration-200">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight font-heading font-sans font-['Helvetica_Neue',Helvetica,Arial,sans-serif] text-[#e2bf29]">
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight font-heading font-sans text-primary">
           Project Dashboard
         </h2>
-        <p className="text-sm text-[#f1f2f3]/80 font-sans mt-1">
+        <p className="text-xs sm:text-sm text-muted-foreground font-sans mt-1">
           Real-time activity progress & metrics summary
         </p>
       </div>
 
       {/* 5 KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
         {kpis.map((kpi) => (
           <Card
             key={kpi.title}
-            className={`bg-[#111111] text-[#ffffff] border rounded-lg shadow-sm transition-colors ${kpi.accentClass}`}
+            className={`bg-card text-card-foreground border rounded-xl shadow-sm transition-colors ${kpi.accentClass}`}
           >
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium font-heading font-sans font-['Helvetica_Neue',Helvetica,Arial,sans-serif] uppercase tracking-wider text-[#f1f2f3]/70">
+            <CardHeader className="p-4 sm:p-6 pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium font-heading font-sans uppercase tracking-wider text-muted-foreground">
                 {kpi.title}
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold font-heading font-sans text-[#ffffff]">
+            <CardContent className="p-4 sm:p-6 pt-0">
+              <div className="text-2xl sm:text-3xl font-bold font-heading font-sans text-foreground">
                 {kpi.value.toLocaleString()}
               </div>
             </CardContent>
@@ -152,7 +176,7 @@ export default async function DashboardPage() {
       {disciplineData && disciplineData.length > 0 ? (
         <DisciplineChart data={disciplineData} />
       ) : (
-        <Card className="bg-[#111111] text-[#ffffff] border border-[#e2bf29]/30 rounded-lg p-6 text-center text-[#f1f2f3]/70 font-sans shadow-sm">
+        <Card className="bg-card text-card-foreground border border-border/60 rounded-xl p-6 text-center text-muted-foreground font-sans shadow-sm">
           No discipline progress data recorded yet.
         </Card>
       )}

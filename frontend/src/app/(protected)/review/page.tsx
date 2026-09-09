@@ -35,12 +35,12 @@ export default async function ReviewPage() {
 
   if (!activeProjectId) {
     return (
-      <div className="space-y-6 bg-[#000000] min-h-full p-4 sm:p-6">
+      <div className="space-y-6 w-full">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-heading text-[#e2bf29]">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight font-heading text-[#e2bf29]">
             Activity Review
           </h1>
-          <p className="text-sm text-[#f1f2f3]/80 font-sans mt-1">
+          <p className="text-xs sm:text-sm text-[#f1f2f3]/80 font-sans mt-1">
             Review extracted site progress updates & schedule activity matches
           </p>
         </div>
@@ -65,12 +65,12 @@ export default async function ReviewPage() {
   const unmatchedItems = (unmatchedRes.data as UnmatchedQueueItem[] | null) ?? []
 
   return (
-    <div className="space-y-6 bg-[#000000] min-h-full p-4 sm:p-6">
+    <div className="space-y-6 w-full transition-colors duration-200">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-heading text-[#e2bf29]">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight font-heading text-primary">
           Activity Review
         </h1>
-        <p className="text-sm text-[#f1f2f3]/80 font-sans mt-1">
+        <p className="text-xs sm:text-sm text-muted-foreground font-sans mt-1">
           Review extracted site progress updates & schedule activity matches
         </p>
       </div>

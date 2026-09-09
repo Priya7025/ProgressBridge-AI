@@ -57,7 +57,7 @@ export default async function ProtectedLayout({
     <UserProvider user={currentUser}>
       <div className="min-h-screen flex flex-col bg-background text-foreground">
         <Navbar />
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 w-full max-w-7xl mx-auto p-3.5 sm:p-6 lg:p-8">{children}</main>
       </div>
     </UserProvider>
   )
