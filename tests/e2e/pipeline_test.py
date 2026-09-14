@@ -39,7 +39,7 @@ INGESTION_WEBHOOK_URL = os.getenv(
     f"{SUPABASE_URL}/functions/v1/document-ingest"
 )
 FRONTEND_API_URL = os.getenv("FRONTEND_API_URL", "http://localhost:3000").rstrip("/")
-DEMO_PROJECT_ID = os.getenv("DEMO_PROJECT_ID", "00000000-0000-0000-0000-000000000001")
+DEMO_PROJECT_ID = os.getenv("DEMO_PROJECT_ID", "1c1711c7-11f8-43f0-babe-e6a7cefe1ad4")
 
 POLL_TIMEOUT_SECS = int(os.getenv("POLL_TIMEOUT_SECS", "5"))
 POLL_INTERVAL_SECS = 1
