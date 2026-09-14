@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * TODO: Wire up real Supabase Storage bucket upload and progress events ingestion pipeline
- * once the Supabase storage bucket name (e.g. `documents` or `schedule-uploads`) is confirmed.
+ * Authenticated Supabase Storage upload (`progress-documents` bucket)
+ * and ingestion pipeline for schedules, daily reports, and project documents.
  */
 
 import { useState, useRef, DragEvent, ChangeEvent } from 'react'
@@ -17,6 +17,8 @@ import {
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
+import { useCurrentUser } from '@/lib/hooks/use-user'
 
 type UploadStatus = 'READY' | 'PARSING' | 'UPLOADING' | 'INDEXING' | 'COMPLETE' | 'ERROR'
 
@@ -62,6 +64,8 @@ export default function UploadPage() {
   const [files, setFiles] = useState<UploadFileItem[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const supabase = createClient()
+  const currentUser = useCurrentUser()
 
   const allowedExtensions = ['xlsx', 'csv', 'txt', 'pdf']
 
@@ -116,18 +120,73 @@ export default function UploadPage() {
 
     const ext = item.file.name.split('.').pop()?.toLowerCase()
 
+    // 1. Mark as uploading to Supabase Storage
     setFiles((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, status: 'PARSING' } : f))
+      prev.map((f) => (f.id === id ? { ...f, status: 'UPLOADING' } : f))
     )
 
     try {
+      // 2. Ensure user is authenticated before upload
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser()
+
+      const userId = user?.id || currentUser?.id
+
+      if (authError || !userId) {
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === id
+              ? {
+                  ...f,
+                  status: 'ERROR',
+                  result: { error: 'Authentication required. Please sign in.' },
+                }
+              : f
+          )
+        )
+        return
+      }
+
+      // 3. Real authenticated upload to Supabase Storage bucket `progress-documents`
+      const storagePath = `${userId}/${item.file.name}`
+      const { error: storageError } = await supabase.storage
+        .from('progress-documents')
+        .upload(storagePath, item.file, {
+          cacheControl: '3600',
+          upsert: true,
+        })
+
+      if (storageError) {
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === id
+              ? {
+                  ...f,
+                  status: 'ERROR',
+                  result: {
+                    error: `Storage upload failed: ${storageError.message}`,
+                  },
+                }
+              : f
+          )
+        )
+        return
+      }
+
+      // 4. Downstream processing by file type
       if (ext === 'csv' || ext === 'xlsx') {
         setFiles((prev) =>
-          prev.map((f) => (f.id === id ? { ...f, status: 'UPLOADING' } : f))
+          prev.map((f) => (f.id === id ? { ...f, status: 'PARSING' } : f))
         )
 
         const formData = new FormData()
         formData.append('file', item.file)
+        const activeProjectId = currentUser?.project_ids?.[0]
+        if (activeProjectId) {
+          formData.append('projectId', activeProjectId)
+        }
 
         const res = await fetch('/api/upload/schedule', {
           method: 'POST',
@@ -143,7 +202,7 @@ export default function UploadPage() {
                 ? {
                     ...f,
                     status: 'ERROR',
-                    result: { error: data.error || 'Upload failed' },
+                    result: { error: data.error || 'Schedule upload failed' },
                   }
                 : f
             )
@@ -171,23 +230,30 @@ export default function UploadPage() {
                     duplicates: data.duplicates,
                     disciplines: data.disciplines,
                     indexing_status: data.indexing?.status || 'READY',
-                    message: data.indexing?.message || 'Activities uploaded and indexed',
+                    message:
+                      data.indexing?.message ||
+                      `Stored in progress-documents/${storagePath} and indexed ${data.rows_upserted || 0} activities.`,
                   },
                 }
               : f
           )
         )
       } else if (ext === 'txt') {
-        // Daily Report text file ingestion
+        // Daily Report text file ingestion via existing /api/time-agent
         setFiles((prev) =>
-          prev.map((f) => (f.id === id ? { ...f, status: 'UPLOADING' } : f))
+          prev.map((f) => (f.id === id ? { ...f, status: 'PARSING' } : f))
         )
 
         const textContent = await item.file.text()
+        const activeProjectId = currentUser?.project_ids?.[0]
+
         const res = await fetch('/api/time-agent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: textContent }),
+          body: JSON.stringify({
+            text: textContent,
+            projectId: activeProjectId,
+          }),
         })
 
         const data = await res.json()
@@ -199,22 +265,40 @@ export default function UploadPage() {
                   ...f,
                   status: res.ok && data.success ? 'COMPLETE' : 'ERROR',
                   result: {
-                    message: data.message || 'Report sent to AI extraction pipeline',
+                    message:
+                      data.message ||
+                      `Uploaded to Storage (progress-documents/${storagePath}) & processed by AI extraction pipeline`,
                     error: !res.ok ? data.message || 'Extraction failed' : undefined,
                   },
                 }
               : f
           )
         )
-      } else {
-        // PDF or other format
+      } else if (ext === 'pdf') {
+        // PDF format: real Storage upload succeeded
         setFiles((prev) =>
           prev.map((f) =>
             f.id === id
               ? {
                   ...f,
                   status: 'COMPLETE',
-                  result: { message: 'Document ingested successfully' },
+                  result: {
+                    message: `Uploaded to Supabase Storage: progress-documents/${storagePath}. Ready for AI document extraction.`,
+                  },
+                }
+              : f
+          )
+        )
+      } else {
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === id
+              ? {
+                  ...f,
+                  status: 'COMPLETE',
+                  result: {
+                    message: `Uploaded to Supabase Storage: progress-documents/${storagePath}`,
+                  },
                 }
               : f
           )
@@ -251,18 +335,18 @@ export default function UploadPage() {
             Ready to upload
           </span>
         )
-      case 'PARSING':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-accent/15 text-accent border border-accent/40 rounded animate-pulse">
-            <Loader2 className="size-3 animate-spin" />
-            Parsing CSV...
-          </span>
-        )
       case 'UPLOADING':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-primary/20 text-primary border border-primary/40 rounded animate-pulse">
             <Loader2 className="size-3 animate-spin" />
-            Uploading to DB...
+            Uploading to Storage...
+          </span>
+        )
+      case 'PARSING':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-accent/15 text-accent border border-accent/40 rounded animate-pulse">
+            <Loader2 className="size-3 animate-spin" />
+            Parsing...
           </span>
         )
       case 'INDEXING':
