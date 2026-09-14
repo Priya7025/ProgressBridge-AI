@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
+          'ngrok-skip-browser-warning': 'true',
         },
         body: JSON.stringify(payload),
         signal: controller.signal,
