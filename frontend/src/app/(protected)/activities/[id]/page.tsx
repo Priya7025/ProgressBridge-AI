@@ -135,12 +135,12 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
     redirect('/time-agent')
   }
 
-  // 1. Fetch schedule_activity row by ID
-  const { data: activityData } = await supabase
-    .from('schedule_activities')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle()
+  // 1. Fetch schedule_activity row by UUID (id) OR by activity code (activity_id e.g. PIP-2458)
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+
+  const { data: activityData } = isUUID
+    ? await supabase.from('schedule_activities').select('*').eq('id', id).maybeSingle()
+    : await supabase.from('schedule_activities').select('*').eq('activity_id', id).maybeSingle()
 
   const activity = activityData as ScheduleActivity | null
 
@@ -150,7 +150,7 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
         <Card className="bg-card text-card-foreground border border-primary/40 rounded-lg p-8 max-w-md mx-auto shadow-lg text-center">
           <CardTitle className="font-heading text-xl font-bold text-primary">Activity Not Found</CardTitle>
           <p className="text-sm text-muted-foreground mt-2 font-sans">
-            No schedule activity exists for ID: {id}
+            No schedule activity exists for ID or code: {id}
           </p>
           <div className="pt-4">
             <Link
@@ -165,7 +165,7 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
     )
   }
 
-  // 2. Fetch linked activity_matches with progress_events & audit_log rows concurrently
+  // 2. Fetch linked activity_matches with progress_events & audit_log rows concurrently for activity.id
   const [matchesRes, auditRes] = await Promise.all([
     supabase
       .from('activity_matches')
@@ -175,11 +175,11 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
           *
         )
       `)
-      .eq('activity_id', id),
+      .eq('activity_id', activity.id),
     supabase
       .from('audit_log')
       .select('*')
-      .eq('activity_id', id)
+      .eq('activity_id', activity.id)
       .order('created_at', { ascending: false }),
   ])
 
@@ -358,6 +358,36 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
                         <span>Status: <strong className="text-primary font-bold">{match.match_status}</strong></span>
                       )}
                     </div>
+
+                    {/* 4 SUB-SCORES */}
+                    {(match.semantic_score !== null || match.identifier_score !== null) && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-border/40 text-xs">
+                        <div className="bg-background/60 p-2 rounded border border-border/50">
+                          <span className="text-muted-foreground block text-[10px] sm:text-[11px]">Semantic</span>
+                          <strong className="text-primary font-mono text-xs">
+                            {match.semantic_score !== null ? `${(match.semantic_score * 100).toFixed(0)}%` : 'N/A'}
+                          </strong>
+                        </div>
+                        <div className="bg-background/60 p-2 rounded border border-border/50">
+                          <span className="text-muted-foreground block text-[10px] sm:text-[11px]">Identifier</span>
+                          <strong className="text-primary font-mono text-xs">
+                            {match.identifier_score !== null ? `${(match.identifier_score * 100).toFixed(0)}%` : 'N/A'}
+                          </strong>
+                        </div>
+                        <div className="bg-background/60 p-2 rounded border border-border/50">
+                          <span className="text-muted-foreground block text-[10px] sm:text-[11px]">Discipline</span>
+                          <strong className="text-primary font-mono text-xs">
+                            {match.discipline_score !== null ? `${(match.discipline_score * 100).toFixed(0)}%` : 'N/A'}
+                          </strong>
+                        </div>
+                        <div className="bg-background/60 p-2 rounded border border-border/50">
+                          <span className="text-muted-foreground block text-[10px] sm:text-[11px]">Location</span>
+                          <strong className="text-primary font-mono text-xs">
+                            {match.location_score !== null ? `${(match.location_score * 100).toFixed(0)}%` : 'N/A'}
+                          </strong>
+                        </div>
+                      </div>
+                    )}
 
                     {event?.delay_reason && (
                       <p className="text-xs text-destructive font-bold bg-destructive/10 border border-destructive/30 p-2 rounded">

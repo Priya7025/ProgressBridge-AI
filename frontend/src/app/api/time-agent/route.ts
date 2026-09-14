@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     const projectId =
       body.projectId?.trim() ||
       process.env.NEXT_PUBLIC_DEMO_PROJECT_ID ||
-      '00000000-0000-0000-0000-000000000001'
+      '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4'
 
     if (!textContent) {
       return NextResponse.json(
@@ -104,6 +104,68 @@ export async function POST(req: NextRequest) {
           status: 'RECEIVED',
           message: 'Activity log received by n8n Time Agent webhook.',
           events: [],
+        }
+      }
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+      const supabaseServiceKey =
+        process.env.SUPABASE_SERVICE_ROLE_KEY ||
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+        ''
+
+      // Ensure extracted events are saved to progress_events if not already saved
+      const extractedEvents = (responseData?.data as { events?: Array<Record<string, unknown>> })?.events ||
+        (responseData?.events as Array<Record<string, unknown>>) || []
+
+      if (Array.isArray(extractedEvents) && extractedEvents.length > 0 && supabaseUrl && supabaseServiceKey) {
+        const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
+        const supabase = createSupabaseClient(supabaseUrl, supabaseServiceKey)
+
+        for (const evt of extractedEvents) {
+          if (!evt.id) {
+            const { data: inserted } = await supabase
+              .from('progress_events')
+              .insert({
+                project_id: projectId,
+                discipline: evt.discipline || null,
+                activity_description: evt.activity_description || '',
+                asset: evt.asset || null,
+                location: evt.location || null,
+                event_type: evt.event_type || 'IN_PROGRESS',
+                event_date: evt.event_date || null,
+                event_time: evt.event_time || null,
+                quantity: evt.quantity ? Number(evt.quantity) : null,
+                delay_reason: evt.delay_reason || null,
+                status: 'PENDING_MATCH',
+              })
+              .select()
+              .single()
+
+            if (inserted?.id) {
+              evt.id = inserted.id
+            }
+          }
+        }
+      }
+
+      // Automatically trigger schedule matching engine for pending events
+      if (supabaseUrl && supabaseServiceKey) {
+        try {
+          const matchRes = await fetch(`${supabaseUrl}/functions/v1/generate-embeddings`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              action: 'match_pending',
+              project_id: projectId,
+            }),
+          })
+          const matchResult = await matchRes.json().catch(() => null)
+          console.log('[Time Agent] Auto matching completed:', matchResult)
+        } catch (matchErr) {
+          console.error('[Time Agent] Auto matching error:', matchErr)
         }
       }
 

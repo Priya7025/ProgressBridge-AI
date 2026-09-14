@@ -27,12 +27,23 @@ export function ReviewItemActions({
     setLoading('accept')
     try {
       const now = new Date().toISOString()
-      if (matchId) {
+      let currentMatchId = matchId
+
+      if (!currentMatchId) {
+        const { data: mRow } = await supabase
+          .from('activity_matches')
+          .select('id')
+          .eq('event_id', eventId)
+          .maybeSingle()
+        currentMatchId = mRow?.id
+      }
+
+      if (currentMatchId) {
         // Fetch the match details along with progress event date and type
         const { data: matchData } = await supabase
           .from('activity_matches')
-          .select('activity_id, event_id, progress_events (event_type, event_date)')
-          .eq('id', matchId)
+          .select('activity_id, event_id, progress_events (event_type, event_date, activity_description)')
+          .eq('id', currentMatchId)
           .single()
 
         await supabase
@@ -42,23 +53,24 @@ export function ReviewItemActions({
             reviewed_by: userId,
             reviewed_at: now,
           })
-          .eq('id', matchId)
+          .eq('id', currentMatchId)
 
         if (matchData?.activity_id) {
           const rawEvents = matchData.progress_events
           const evt = Array.isArray(rawEvents) ? rawEvents[0] : rawEvents
 
           const updatePayload: Record<string, unknown> = {}
-          if (evt?.event_type === 'COMPLETED') {
+          const eventDate = evt?.event_date || new Date().toISOString().split('T')[0]
+
+          if (
+            evt?.event_type === 'COMPLETED' ||
+            evt?.activity_description?.toLowerCase().includes('completed')
+          ) {
             updatePayload.status = 'COMPLETED'
-            if (evt.event_date) {
-              updatePayload.actual_finish = evt.event_date
-            }
+            updatePayload.actual_finish = eventDate
           } else if (evt?.event_type === 'IN_PROGRESS' || evt?.event_type === 'STARTED') {
             updatePayload.status = 'IN_PROGRESS'
-            if (evt.event_date) {
-              updatePayload.actual_start = evt.event_date
-            }
+            updatePayload.actual_start = eventDate
           }
 
           if (Object.keys(updatePayload).length > 0) {
@@ -67,6 +79,20 @@ export function ReviewItemActions({
               .update(updatePayload)
               .eq('id', matchData.activity_id)
           }
+
+          // Explicit audit log record for activity details timeline
+          await supabase.from('audit_log').insert({
+            event_id: matchData.event_id || eventId,
+            activity_id: matchData.activity_id,
+            action: 'MATCH_APPROVED',
+            user_id: userId,
+            comment: `Match approved by reviewer. Status updated to ${updatePayload.status || 'IN_PROGRESS'}.`,
+            new_value: {
+              status: updatePayload.status,
+              actual_start: updatePayload.actual_start,
+              actual_finish: updatePayload.actual_finish,
+            },
+          })
         }
       }
 

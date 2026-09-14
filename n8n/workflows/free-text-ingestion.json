@@ -209,7 +209,7 @@
           "fieldValues": [
             {
               "fieldId": "project_id",
-              "fieldValue": "={{ $('Get many rows').item.json.id }}"
+              "fieldValue": "={{ $('Validate & Sanitize Input').first().json.project_id }}"
             },
             {
               "fieldId": "document_id",

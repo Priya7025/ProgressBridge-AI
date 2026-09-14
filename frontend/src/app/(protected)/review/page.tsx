@@ -31,23 +31,10 @@ export default async function ReviewPage() {
     redirect('/time-agent')
   }
 
-  const activeProjectId = profile?.project_ids?.[0]
-
-  if (!activeProjectId) {
-    return (
-      <div className="space-y-6 w-full">
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight font-heading text-[#e2bf29]">
-            Activity Review
-          </h1>
-          <p className="text-xs sm:text-sm text-[#f1f2f3]/80 font-sans mt-1">
-            Review extracted site progress updates & schedule activity matches
-          </p>
-        </div>
-        <ReviewTabsClient pendingItems={[]} unmatchedItems={[]} userId={user.id} />
-      </div>
-    )
-  }
+  const activeProjectId =
+    profile?.project_ids?.[0] ||
+    process.env.NEXT_PUBLIC_DEMO_PROJECT_ID ||
+    '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4'
 
   // 4. Concurrently query review_queue and unmatched_queue for activeProjectId
   const [reviewRes, unmatchedRes] = await Promise.all([

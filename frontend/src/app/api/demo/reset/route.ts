@@ -49,20 +49,24 @@ export async function POST(req: NextRequest) {
     // 5. Delete documents
     await supabase.from('documents').delete().eq('project_id', projectId)
 
-    // 6. Delete schedule_activities
-    const { error: actDelErr } = await supabase
+    // 6. Reset execution fields on schedule_activities (DO NOT delete activities or embeddings)
+    const { error: actResetErr } = await supabase
       .from('schedule_activities')
-      .delete()
+      .update({
+        actual_start: null,
+        actual_finish: null,
+        status: 'NOT_STARTED',
+      })
       .eq('project_id', projectId)
 
-    if (actDelErr) {
+    if (actResetErr) {
       return NextResponse.json(
-        { success: false, error: actDelErr.message },
+        { success: false, error: actResetErr.message },
         { status: 500 }
       )
     }
 
-    // 7. Verify zero counts
+    // 7. Verify counts
     const { count: finalActs } = await supabase
       .from('schedule_activities')
       .select('*', { count: 'exact', head: true })

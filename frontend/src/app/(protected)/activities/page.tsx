@@ -29,11 +29,10 @@ export default async function ActivitiesPage() {
     redirect('/time-agent')
   }
 
-  const activeProjectId = profile?.project_ids?.[0]
-
-  if (!activeProjectId) {
-    return <ActivitiesListClient initialActivities={[]} />
-  }
+  const activeProjectId =
+    profile?.project_ids?.[0] ||
+    process.env.NEXT_PUBLIC_DEMO_PROJECT_ID ||
+    '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4'
 
   // 4. Fetch all schedule_activities rows for the project, ordered by activity_id
   const { data: activitiesData } = await supabase
