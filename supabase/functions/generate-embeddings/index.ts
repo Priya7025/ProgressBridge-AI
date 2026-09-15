@@ -26,6 +26,118 @@ interface ProgressEvent {
   event_type: string | null;
   event_date: string | null;
   status: string;
+  source_evidence?: string | null;
+}
+
+function extractEventMetadata(evt: {
+  discipline?: string | null;
+  activity_description?: string;
+  location?: string | null;
+  asset?: string | null;
+  source_evidence?: string | null;
+  event_date?: string | null;
+}) {
+  const desc = evt.activity_description || "";
+  const evidence = evt.source_evidence || "";
+  const combined = `${desc} ${evidence}`.trim();
+  const fullLower = combined.toLowerCase();
+
+  // 1. Discipline extraction
+  let discipline = evt.discipline || null;
+  if (!discipline) {
+    if (
+      fullLower.includes("piping") ||
+      fullLower.includes("spool") ||
+      fullLower.includes("hydrotest") ||
+      fullLower.includes("flange") ||
+      fullLower.includes("pipe") ||
+      fullLower.includes("pwht") ||
+      fullLower.includes("valve")
+    ) {
+      discipline = "Piping";
+    } else if (
+      fullLower.includes("concrete") ||
+      fullLower.includes("excavation") ||
+      fullLower.includes("earthwork") ||
+      fullLower.includes("foundation") ||
+      fullLower.includes("rebar") ||
+      fullLower.includes("pier")
+    ) {
+      discipline = "Civil";
+    } else if (
+      fullLower.includes("cable") ||
+      fullLower.includes("tray") ||
+      fullLower.includes("conduit") ||
+      fullLower.includes("transformer") ||
+      fullLower.includes("switchgear") ||
+      fullLower.includes("electrical")
+    ) {
+      discipline = "Electrical";
+    } else if (
+      fullLower.includes("instrument") ||
+      fullLower.includes("transmitter") ||
+      fullLower.includes("tubing") ||
+      fullLower.includes("calibration") ||
+      fullLower.includes("loop")
+    ) {
+      discipline = "Instrumentation";
+    } else if (
+      fullLower.includes("mechanical") ||
+      fullLower.includes("pump") ||
+      fullLower.includes("compressor") ||
+      fullLower.includes("turbine") ||
+      fullLower.includes("vessel") ||
+      fullLower.includes("tank")
+    ) {
+      discipline = "Mechanical";
+    }
+  }
+
+  // 2. Asset / Line Identifier extraction
+  let asset = evt.asset || null;
+  if (!asset) {
+    const assetMatch = combined.match(
+      /\b(?:Line|SKID|Pier|Tank|Pump|Header|Tag)\s+[\w-]+|\bLine\s+[\w-]+|\b[A-Z0-9]+-[A-Z0-9]+(?:-[A-Z0-9]+)?\b/i
+    );
+    if (assetMatch) {
+      asset = assetMatch[0].trim();
+    }
+  }
+
+  // 3. Location extraction
+  let location = evt.location || null;
+  if (!location) {
+    const locMatch = combined.match(
+      /\b(?:North|South|East|West)\s+Unit(?:\s*-\s*Process\s+Train\s+[A-Z])?|\bProcess\s+Train\s+[A-Z]|\bTrain\s+[A-Z]|\bCrude\s+Tank\s+Farm(?:\s+Loading\s+Manifold)?|\bSector\s+\d+|\bAdmin(?:istrative)?\s+Gate\b/i
+    );
+    if (locMatch) {
+      location = locMatch[0].trim();
+    }
+  }
+
+  // 4. Event Date extraction
+  let eventDate = evt.event_date || null;
+  if (!eventDate) {
+    const isoMatch = combined.match(/\b\d{4}-\d{2}-\d{2}\b/);
+    if (isoMatch) {
+      eventDate = isoMatch[0];
+    } else {
+      const monthMatch = combined.match(
+        /\b(\d{1,2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\b/i
+      );
+      if (monthMatch) {
+        const day = monthMatch[1].padStart(2, "0");
+        const monthNames: Record<string, string> = {
+          jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+          jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12"
+        };
+        const month = monthNames[monthMatch[2].toLowerCase().substring(0, 3)] || "08";
+        eventDate = `2026-${month}-${day}`;
+      }
+    }
+  }
+
+  return { discipline, asset, location, eventDate };
 }
 
 interface EmbeddingItem {
@@ -156,7 +268,7 @@ Deno.serve(async (req: Request) => {
     if (eventId) {
       const { data, error } = await supabase
         .from("progress_events")
-        .select("id, project_id, discipline, activity_description, location, asset, event_type, event_date, status")
+        .select("id, project_id, discipline, activity_description, location, asset, event_type, event_date, status, source_evidence")
         .eq("id", eventId);
       if (error) {
         return new Response(
@@ -168,9 +280,9 @@ Deno.serve(async (req: Request) => {
     } else if (project_id) {
       const { data, error } = await supabase
         .from("progress_events")
-        .select("id, project_id, discipline, activity_description, location, asset, event_type, event_date, status")
+        .select("id, project_id, discipline, activity_description, location, asset, event_type, event_date, status, source_evidence")
         .eq("project_id", project_id)
-        .in("status", ["PENDING_MATCH", "PENDING_REVIEW"]);
+        .in("status", ["PENDING_MATCH", "PENDING_REVIEW", "UNMATCHED"]);
       if (error) {
         return new Response(
           JSON.stringify({ error: error.message }),
@@ -196,7 +308,25 @@ Deno.serve(async (req: Request) => {
 
     for (const evt of eventsToMatch) {
       try {
-        const queryText = `${evt.discipline ?? ""} | ${evt.activity_description} | ${evt.location ?? ""} | ${evt.asset ?? ""}`;
+        // Extract and normalize metadata if missing in raw extraction
+        const norm = extractEventMetadata(evt);
+        const effectiveDiscipline = norm.discipline;
+        const effectiveAsset = norm.asset;
+        const effectiveLocation = norm.location;
+        const effectiveDate = norm.eventDate;
+
+        // Persist normalized metadata to progress_events row
+        const metaUpdates: Record<string, any> = {};
+        if (!evt.discipline && effectiveDiscipline) metaUpdates.discipline = effectiveDiscipline;
+        if (!evt.asset && effectiveAsset) metaUpdates.asset = effectiveAsset;
+        if (!evt.location && effectiveLocation) metaUpdates.location = effectiveLocation;
+        if (!evt.event_date && effectiveDate) metaUpdates.event_date = effectiveDate;
+
+        if (Object.keys(metaUpdates).length > 0) {
+          await supabase.from("progress_events").update(metaUpdates).eq("id", evt.id);
+        }
+
+        const queryText = `${effectiveDiscipline ?? ""} | ${evt.activity_description} | ${effectiveLocation ?? ""} | ${effectiveAsset ?? ""}`;
         const [eventEmbedding] = await getVoyageEmbeddings([queryText], VOYAGE_API_KEY);
 
         const { data: candidates, error: rpcErr } = await supabase.rpc(
@@ -204,9 +334,9 @@ Deno.serve(async (req: Request) => {
           {
             p_project_id: evt.project_id,
             p_embedding: eventEmbedding,
-            p_discipline: evt.discipline,
-            p_location: evt.location,
-            p_asset: evt.asset,
+            p_discipline: effectiveDiscipline,
+            p_location: effectiveLocation,
+            p_asset: effectiveAsset,
             p_match_count: 5,
           }
         );

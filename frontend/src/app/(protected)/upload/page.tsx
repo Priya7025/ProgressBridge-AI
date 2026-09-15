@@ -275,17 +275,33 @@ export default function UploadPage() {
 
         const data = await res.json()
 
+        const eventCount =
+          data.count ??
+          data.data?.events_count ??
+          data.data?.events?.length ??
+          data.events?.length ??
+          0
+
+        const isSuccess = res.ok && data.success && eventCount > 0
+
         setFiles((prev) =>
           prev.map((f) =>
             f.id === id
               ? {
                   ...f,
-                  status: res.ok && data.success ? 'COMPLETE' : 'ERROR',
+                  status: isSuccess ? 'COMPLETE' : 'ERROR',
                   result: {
-                    message:
-                      data.message ||
-                      `Uploaded to Storage (progress-documents/${storagePath}) & processed by AI extraction pipeline`,
-                    error: !res.ok ? data.message || 'Extraction failed' : undefined,
+                    message: isSuccess
+                      ? data.message ||
+                        `Uploaded and processed by AI extraction pipeline (${eventCount} event${eventCount > 1 ? 's' : ''} extracted)`
+                      : !res.ok
+                      ? data.message || 'Extraction failed'
+                      : 'No events extracted from document',
+                    error: !isSuccess
+                      ? !res.ok
+                        ? data.message || 'Extraction failed'
+                        : 'No events extracted from document'
+                      : undefined,
                   },
                 }
               : f
