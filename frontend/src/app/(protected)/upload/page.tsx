@@ -63,6 +63,9 @@ function getFileIcon(filename: string) {
 export default function UploadPage() {
   const [files, setFiles] = useState<UploadFileItem[]>([])
   const [isDragging, setIsDragging] = useState(false)
+  const [fileError, setFileError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
   const currentUser = useCurrentUser()
@@ -70,6 +73,20 @@ export default function UploadPage() {
   const allowedExtensions = ['xlsx', 'csv', 'txt', 'pdf']
 
   const handleFiles = (incomingFiles: File[]) => {
+    setFileError(null)
+    setSuccessMessage(null)
+
+    const invalidFiles = incomingFiles.filter((file) => {
+      const ext = file.name.split('.').pop()?.toLowerCase()
+      return !ext || !allowedExtensions.includes(ext)
+    })
+
+    if (invalidFiles.length > 0) {
+      setFileError(
+        `Unsupported file type (${invalidFiles.map((f) => f.name).join(', ')}). Only .xlsx, .csv, .txt, and .pdf files are allowed.`
+      )
+    }
+
     const validFiles = incomingFiles.filter((file) => {
       const ext = file.name.split('.').pop()?.toLowerCase()
       return ext && allowedExtensions.includes(ext)
@@ -316,15 +333,16 @@ export default function UploadPage() {
               }
             : f
         )
-      )
-    }
-  }
+  const handleUploadAll = async () => {
+    setFileError(null)
+    setSuccessMessage(null)
+    setIsUploading(true)
 
-  const handleUploadAll = () => {
     const readyFiles = files.filter((f) => f.status === 'READY')
-    readyFiles.forEach((fileItem) => {
-      executeRealUpload(fileItem.id)
-    })
+    for (const fileItem of readyFiles) {
+      await executeRealUpload(fileItem.id)
+    }
+    setIsUploading(false)
   }
 
   const getStatusBadge = (status: UploadStatus) => {
@@ -346,7 +364,7 @@ export default function UploadPage() {
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-accent/15 text-accent border border-accent/40 rounded animate-pulse">
             <Loader2 className="size-3 animate-spin" />
-            Parsing...
+            Uploading...
           </span>
         )
       case 'INDEXING':
@@ -383,6 +401,32 @@ export default function UploadPage() {
           Upload baseline activity schedules or daily progress reports. Accepted file formats: <strong className="text-primary font-mono">.xlsx, .csv, .txt, .pdf</strong>
         </p>
       </div>
+
+      {fileError && (
+        <div className="bg-[#111111] text-[#b71511] border border-[#b71511]/50 p-4 rounded-lg text-sm font-semibold shadow-sm flex items-center justify-between">
+          <span>{fileError}</span>
+          <button
+            type="button"
+            onClick={() => setFileError(null)}
+            className="text-xs text-[#f1f2f3]/60 hover:text-white underline cursor-pointer ml-4"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="bg-[#111111] text-emerald-400 border border-emerald-500/50 p-4 rounded-lg text-sm font-semibold shadow-sm flex items-center justify-between">
+          <span>{successMessage}</span>
+          <button
+            type="button"
+            onClick={() => setSuccessMessage(null)}
+            className="text-xs text-[#f1f2f3]/60 hover:text-white underline cursor-pointer ml-4"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* DRAG AND DROP ZONE */}
       <Card className="bg-card border-2 border-dashed border-primary/60 hover:border-primary transition-all rounded-xl shadow-sm">
@@ -426,10 +470,17 @@ export default function UploadPage() {
             </h3>
             <Button
               onClick={handleUploadAll}
-              disabled={!files.some((f) => f.status === 'READY')}
+              disabled={isUploading || !files.some((f) => f.status === 'READY')}
               className="bg-primary text-primary-foreground font-bold rounded-lg shadow-[rgba(226,191,41,0.3)_0px_0px_12px] hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none transition-all cursor-pointer text-xs sm:text-sm py-1.5 px-3 sm:px-4"
             >
-              Upload All
+              {isUploading ? (
+                <>
+                  <Loader2 className="size-4 animate-spin mr-1" />
+                  Uploading...
+                </>
+              ) : (
+                'Upload All'
+              )}
             </Button>
           </div>
 
@@ -462,6 +513,7 @@ export default function UploadPage() {
                         {item.status === 'READY' && (
                           <Button
                             size="sm"
+                            disabled={isUploading}
                             onClick={() => executeRealUpload(item.id)}
                             className="bg-primary text-primary-foreground font-bold text-xs rounded hover:opacity-90 transition-colors cursor-pointer h-7 sm:h-8 px-2.5 sm:px-3"
                           >
@@ -473,7 +525,7 @@ export default function UploadPage() {
                           size="icon-sm"
                           variant="ghost"
                           onClick={() => removeFile(item.id)}
-                          disabled={item.status === 'PARSING' || item.status === 'UPLOADING' || item.status === 'INDEXING'}
+                          disabled={isUploading || item.status === 'PARSING' || item.status === 'UPLOADING' || item.status === 'INDEXING'}
                           className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded cursor-pointer size-7 sm:size-8"
                           title="Remove file"
                         >
@@ -558,3 +610,4 @@ export default function UploadPage() {
     </div>
   )
 }
+

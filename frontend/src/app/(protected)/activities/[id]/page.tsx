@@ -135,14 +135,30 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
     redirect('/time-agent')
   }
 
-  // 1. Fetch schedule_activity row by UUID (id) OR by activity code (activity_id e.g. PIP-2458)
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+  // 1. Fetch schedule_activity row by ID (UUID) or activity_id (code)
+  const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)
 
-  const { data: activityData } = isUUID
-    ? await supabase.from('schedule_activities').select('*').eq('id', id).maybeSingle()
-    : await supabase.from('schedule_activities').select('*').eq('activity_id', id).maybeSingle()
+  let activityData: ScheduleActivity | null = null
 
-  const activity = activityData as ScheduleActivity | null
+  if (isUuid) {
+    const { data } = await supabase
+      .from('schedule_activities')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    activityData = data as ScheduleActivity | null
+  }
+
+  if (!activityData) {
+    const { data } = await supabase
+      .from('schedule_activities')
+      .select('*')
+      .eq('activity_id', id)
+      .maybeSingle()
+    activityData = data as ScheduleActivity | null
+  }
+
+  const activity = activityData
 
   if (!activity) {
     return (
@@ -203,19 +219,19 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div>
               <span className="text-xs font-mono font-bold text-primary uppercase tracking-wide">
-                {activity.activity_id}
+                {activity.activity_id || 'UNNAMED'}
               </span>
               <CardTitle className="font-heading text-lg sm:text-2xl font-bold tracking-tight text-foreground mt-0.5">
-                {activity.description}
+                {activity.description || 'No description provided'}
               </CardTitle>
             </div>
             <div>
               <span
                 className={`inline-block px-2.5 sm:px-3 py-1 text-xs font-bold font-heading uppercase rounded ${getStatusBadgeClass(
-                  activity.status
+                  activity.status || ''
                 )}`}
               >
-                {activity.status.replace('_', ' ')}
+                {(activity.status || 'NOT_STARTED').replace('_', ' ')}
               </span>
             </div>
           </div>

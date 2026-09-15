@@ -37,6 +37,86 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function formatAgentResponse(resData: Record<string, any> | null | undefined): string {
+  if (!resData) return 'No response data received.'
+
+  const parts: string[] = []
+
+  // If response has a top-level message field, display it
+  if (resData.message && typeof resData.message === 'string') {
+    parts.push(resData.message)
+  }
+
+  // Direct match check at root level
+  const isMatched = resData.matched === true || resData.status === 'MATCHED' || Boolean(resData.matched_activity)
+  const isUnmatched = resData.status === 'UNMATCHED' || resData.matched === false
+
+  if (isMatched) {
+    const code =
+      resData.activity_code ||
+      resData.activity_id ||
+      resData.matched_activity?.activity_id ||
+      resData.matched_activity?.code ||
+      ''
+    const desc = resData.activity_description || resData.matched_activity?.description || resData.description || ''
+    const confidence =
+      resData.confidence_score ?? resData.confidence ?? resData.final_score ?? resData.matched_activity?.confidence
+    const confStr =
+      confidence !== undefined && confidence !== null
+        ? ` (Confidence: ${typeof confidence === 'number' ? (confidence <= 1 ? Math.round(confidence * 100) : confidence) : confidence}%)`
+        : ''
+    const codeDesc = [code, desc].filter(Boolean).join(' - ')
+    parts.push(`Matched Activity: ${codeDesc || 'Activity'}${confStr}`)
+  } else if (isUnmatched) {
+    const discipline = resData.discipline || resData.data?.discipline
+    const location = resData.location || resData.data?.location
+    const eventType = resData.event_type || resData.data?.event_type
+    const details = [discipline, location, eventType].filter(Boolean).join(' / ')
+    parts.push(`No confident match found for: ${details || 'reported event'}`)
+  }
+
+  // Events array check (e.g. from n8n extraction output)
+  const events = resData.events || resData.data?.events
+  if (Array.isArray(events) && events.length > 0) {
+    const eventSummaries = events.map((evt: Record<string, any>) => {
+      if (evt.matched === true || evt.status === 'MATCHED' || evt.matched_activity || evt.activity_code) {
+        const code = evt.activity_code || evt.activity_id || evt.matched_activity?.code || ''
+        const desc = evt.activity_description || evt.matched_activity?.description || ''
+        const confidence = evt.confidence_score ?? evt.confidence ?? evt.final_score
+        const confStr =
+          confidence !== undefined && confidence !== null
+            ? ` (Confidence: ${typeof confidence === 'number' ? (confidence <= 1 ? Math.round(confidence * 100) : confidence) : confidence}%)`
+            : ''
+        const codeDesc = [code, desc].filter(Boolean).join(' - ')
+        return `Matched Activity: ${codeDesc || 'Activity'}${confStr}`
+      } else if (evt.status === 'UNMATCHED') {
+        const details = [evt.discipline, evt.location, evt.event_type].filter(Boolean).join(' / ')
+        return `No confident match found for: ${details || evt.activity_description || 'reported activity'}`
+      } else {
+        const details = [
+          evt.event_type,
+          evt.discipline,
+          evt.location,
+          evt.quantity ? `Qty: ${evt.quantity}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+        return `Extracted Event: "${evt.activity_description}" [${details}]`
+      }
+    })
+    parts.push(...eventSummaries)
+  }
+
+  if (parts.length === 0) {
+    if (typeof resData === 'string') return resData
+    if (resData.raw && typeof resData.raw === 'string') return resData.raw
+    return JSON.stringify(resData, null, 2)
+  }
+
+  return parts.join('\n\n')
+}
+
 export default function TimeAgentPage() {
   const user = useCurrentUser()
   const activeProjectId = user?.project_ids?.[0]
@@ -138,7 +218,7 @@ export default function TimeAgentPage() {
         const agentGeneralMsg: Message = {
           id: `agent-${Date.now()}`,
           sender: 'agent',
-          text: n8nResult?.message || 'Activity log received and processed.',
+          text: n8nResult?.message || formatAgentResponse(data),
           timestamp: formatTime(new Date()),
         }
         setMessages((prev) => [...prev, agentGeneralMsg])

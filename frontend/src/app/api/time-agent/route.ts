@@ -1,24 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 interface IngestRequestBody {
   text?: string
+  message?: string
+  text_content?: string
   projectId?: string
+  project_id?: string
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body: IngestRequestBody = await req.json().catch(() => ({}))
-    const textContent = body.text?.trim()
-    const projectId =
-      body.projectId?.trim() ||
-      process.env.NEXT_PUBLIC_DEMO_PROJECT_ID ||
-      '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4'
+    const textContent = (body.text || body.message || body.text_content || '').trim()
 
     if (!textContent) {
       return NextResponse.json(
         { success: false, error: 'Text content is required' },
         { status: 400 }
       )
+    }
+
+    let projectId = body.projectId?.trim() || body.project_id?.trim()
+
+    if (!projectId) {
+      try {
+        const supabase = await createClient()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (user) {
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('project_ids')
+            .eq('id', user.id)
+            .single()
+
+          projectId = profile?.project_ids?.[0]
+        }
+      } catch {
+        // Fall back to environment demo project ID
+      }
+    }
+
+    if (!projectId) {
+      projectId =
+        process.env.NEXT_PUBLIC_DEMO_PROJECT_ID ||
+        '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4'
     }
 
     const webhookUrl = process.env.INGESTION_WEBHOOK_URL?.trim()
@@ -114,7 +143,7 @@ export async function POST(req: NextRequest) {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
         ''
 
-      // Ensure extracted events are saved to progress_events if not already saved
+      // Ensure extracted events are saved to progress_events if returned directly by n8n
       const extractedEvents = (responseData?.data as { events?: Array<Record<string, unknown>> })?.events ||
         (responseData?.events as Array<Record<string, unknown>>) || []
 
