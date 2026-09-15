@@ -333,6 +333,12 @@ export default function UploadPage() {
               }
             : f
         )
+      )
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   const handleUploadAll = async () => {
     setFileError(null)
     setSuccessMessage(null)
