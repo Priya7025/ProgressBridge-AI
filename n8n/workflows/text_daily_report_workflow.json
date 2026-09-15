@@ -1,0 +1,210 @@
+{
+  "name": "Text Daily Report Ingestion Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingest-text",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json.body || $json;\n\nif (\n  !payload.project_id ||\n  typeof payload.project_id !== 'string' ||\n  payload.project_id.trim() === ''\n) {\n  throw new Error(\n    \"Validation Error: 'project_id' is required and must be a valid non-empty string.\"\n  );\n}\n\nif (\n  !payload.text_content ||\n  typeof payload.text_content !== 'string' ||\n  payload.text_content.trim() === ''\n) {\n  throw new Error(\n    \"Validation Error: 'text_content' is required and cannot be empty.\"\n  );\n}\n\nconst sanitized = {\n  project_id: payload.project_id.trim(),\n  text_content: payload.text_content.trim(),\n  filename:\n    payload.filename &&\n    typeof payload.filename === 'string' &&\n    payload.filename.trim()\n      ? payload.filename.trim()\n      : 'daily_report.txt',\n  source_type:\n    payload.source_type &&\n    typeof payload.source_type === 'string' &&\n    payload.source_type.trim()\n      ? payload.source_type.trim()\n      : 'text',\n  uploaded_by: payload.uploaded_by || null,\n  received_at: new Date().toISOString()\n};\n\nreturn [{ json: sanitized }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "validate-sanitize-input",
+      "name": "Validate & Sanitize Input"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text_content }}",
+        "hasOutputParser": false,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an expert construction and industrial project progress extraction engine for ProgressBridge AI (Oil & Gas / Infrastructure projects).\n\nYour task is to analyze site daily progress reports, supervisor diary entries, and chat messages, and extract all concrete physical execution events into a strict structured JSON format.\n\n### CORE OBJECTIVES:\n1. Identify all distinct work execution events mentioned in the text.\n2. For each event, extract: discipline, activity description, asset/equipment identifier, location, event status/type, date, time, quantity, delay reason, and exact source evidence snippet.\n3. If multiple activities or events are mentioned in a single input, extract each one as a separate object in the \"events\" array.\n4. If no physical work execution events are found (e.g. general chit-chat, toolbox safety meeting mentions without progress), return an empty \"events\" array: {\"events\": []}.\n\n### STRICT EXTRACTION RULES:\n1. ZERO HALLUCINATION: Extract only facts explicitly mentioned in the text. Never guess, infer, or invent activity IDs, line numbers, dates, times, quantities, or delay reasons.\n2. MISSING VALUES: If a field is not explicitly stated in the source text, set its value strictly to `null`. Do not use empty strings (\"\"), \"N/A\", or placeholders.\n3. EVENT TYPE / STATUS: Must be exactly one of:\n   - \"STARTED\" (e.g., commenced, started, initiated)\n   - \"IN_PROGRESS\" (e.g., ongoing, continued, progressing)\n   - \"COMPLETED\" (e.g., finished, completed, erected, poured, tested)\n   - \"ON_HOLD\" (e.g., paused, stopped, suspended)\n   - \"BLOCKED\" (e.g., hindered, cannot proceed)\n   - \"CANCELLED\" (e.g., abandoned, called off)\n4. DISCIPLINE (NO INFERENCE): Extract ONLY if explicitly named in the input text (e.g., \"Piping crew\", \"Civil team\", \"Discipline: Electrical\") or in an explicit report header. Do NOT infer discipline from activity names, tools, or equipment. If not explicitly stated, set \"discipline\": null.\n   Allowed values:\n   - \"Civil\"\n   - \"Piping\"\n   - \"Mechanical\"\n   - \"Electrical\"\n   - \"Instrumentation\"\n   - \"HSE\"\n   - null\n5. DATES & TIMES:\n   - \"event_date\": Format as \"YYYY-MM-DD\" ONLY if an explicit date is written in the input text or provided in an explicit document header. Never assume today's date or infer dates. If not explicitly stated, use null.\n   - \"event_time\": Format as 24-hour \"HH:MM\" only if explicitly stated. If not stated, use null.\n6. DELAY REASONS: Extract only if explicitly stated in text. Never guess the reason. If unstated, use null.\n7. SOURCE EVIDENCE: Must be the EXACT, verbatim character-for-character substring copied directly from the input text that proves the extracted event.\n8. OUTPUT FORMAT: Return RAW JSON ONLY. Do NOT wrap output in markdown code blocks, and do NOT include any commentary, greetings, or explanations.",
+              "type": "system"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        460,
+        0
+      ],
+      "id": "ai-extraction",
+      "name": "AI Extraction"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawOutput = $json.text || $json.response?.text || $json.output || \"\";\nconst originalText = $('Validate & Sanitize Input').first().json.text_content;\nconst projectId = $('Validate & Sanitize Input').first().json.project_id;\n\nlet cleaned = rawOutput.trim();\n\nif (cleaned.startsWith('```json')) {\n  cleaned = cleaned.replace(/^```json/, '').replace(/```$/, '').trim();\n} else if (cleaned.startsWith('```')) {\n  cleaned = cleaned.replace(/^```/, '').replace(/```$/, '').trim();\n}\n\nlet parsed;\n\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (err) {\n  throw new Error(\n    `AI Extraction Error: Failed to parse LLM output as JSON. Raw output: ${rawOutput}`\n  );\n}\n\nif (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || !Array.isArray(parsed.events)) {\n  throw new Error(\n    \"AI Extraction Error: Model output must be an object containing a root 'events' array.\"\n  );\n}\n\nconst ALLOWED_EVENT_TYPES = [\n  \"STARTED\",\n  \"IN_PROGRESS\",\n  \"COMPLETED\",\n  \"ON_HOLD\",\n  \"BLOCKED\",\n  \"CANCELLED\"\n];\n\nconst ALLOWED_DISCIPLINES = [\n  \"Civil\",\n  \"Piping\",\n  \"Mechanical\",\n  \"Electrical\",\n  \"Instrumentation\",\n  \"HSE\"\n];\n\nconst DATE_REGEX = /^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$/;\nconst TIME_REGEX = /^([01]\\d|2[0-3]):[0-5]\\d$/;\n\nconst validatedEvents = parsed.events.map((evt, idx) => {\n\n  if (\n    !evt.activity_description ||\n    typeof evt.activity_description !== 'string' ||\n    evt.activity_description.trim() === ''\n  ) {\n    throw new Error(\n      `Validation Error [Event ${idx}]: 'activity_description' is required and must be a non-empty string.`\n    );\n  }\n\n  if (\n    !evt.event_type ||\n    !ALLOWED_EVENT_TYPES.includes(evt.event_type)\n  ) {\n    throw new Error(\n      `Validation Error [Event ${idx}]: Invalid 'event_type' ('${evt.event_type}'). Allowed: ${ALLOWED_EVENT_TYPES.join(', ')}.`\n    );\n  }\n\n  if (\n    !evt.source_evidence ||\n    typeof evt.source_evidence !== 'string' ||\n    evt.source_evidence.trim() === ''\n  ) {\n    throw new Error(\n      `Validation Error [Event ${idx}]: 'source_evidence' is required and must be a non-empty string.`\n    );\n  }\n\n  if (!originalText.includes(evt.source_evidence)) {\n    throw new Error(\n      `Validation Error [Event ${idx}]: 'source_evidence' is not an exact verbatim substring of the input text.`\n    );\n  }\n\n  if (\n    evt.discipline !== null &&\n    !ALLOWED_DISCIPLINES.includes(evt.discipline)\n  ) {\n    throw new Error(\n      `Validation Error [Event ${idx}]: Invalid 'discipline' ('${evt.discipline}'). Allowed: ${ALLOWED_DISCIPLINES.join(', ')} or null.`\n    );\n  }\n\n  if (evt.event_date !== null) {\n    if (\n      typeof evt.event_date !== 'string' ||\n      !DATE_REGEX.test(evt.event_date)\n    ) {\n      throw new Error(\n        `Validation Error [Event ${idx}]: Invalid 'event_date' ('${evt.event_date}'). Must be format 'YYYY-MM-DD' or null.`\n      );\n    }\n  }\n\n  if (evt.event_time !== null) {\n    if (\n      typeof evt.event_time !== 'string' ||\n      !TIME_REGEX.test(evt.event_time)\n    ) {\n      throw new Error(\n        `Validation Error [Event ${idx}]: Invalid 'event_time' ('${evt.event_time}'). Must be 24-hour format 'HH:MM' or null.`\n      );\n    }\n  }\n\n  if (\n    evt.asset !== null &&\n    (typeof evt.asset !== 'string' || evt.asset.trim() === '')\n  ) {\n    throw new Error(\n      `Validation Error [Event ${idx}]: 'asset' must be a valid string or null.`\n    );\n  }\n\n  if (\n    evt.location !== null &&\n    (typeof evt.location !== 'string' || evt.location.trim() === '')\n  ) {\n    throw new Error(\n      `Validation Error [Event ${idx}]: 'location' must be a valid string or null.`\n    );\n  }\n\n  if (\n    evt.quantity !== null &&\n    (typeof evt.quantity !== 'string' || evt.quantity.trim() === '')\n  ) {\n    throw new Error(\n      `Validation Error [Event ${idx}]: 'quantity' must be a valid string or null.`\n    );\n  }\n\n  if (\n    evt.delay_reason !== null &&\n    (typeof evt.delay_reason !== 'string' || evt.delay_reason.trim() === '')\n  ) {\n    throw new Error(\n      `Validation Error [Event ${idx}]: 'delay_reason' must be a valid string or null.`\n    );\n  }\n\n  return {\n    document_id: null,\n    project_id: projectId,\n    discipline: evt.discipline,\n    activity_description: evt.activity_description.trim(),\n    asset: evt.asset ? evt.asset.trim() : null,\n    location: evt.location ? evt.location.trim() : null,\n    event_type: evt.event_type,\n    event_date: evt.event_date,\n    event_time: evt.event_time,\n    quantity: evt.quantity ? evt.quantity.trim() : null,\n    delay_reason: evt.delay_reason ? evt.delay_reason.trim() : null,\n    source_evidence: evt.source_evidence\n  };\n});\n\nreturn [\n  {\n    json: {\n      project_id: projectId,\n      events_count: validatedEvents.length,\n      events: validatedEvents\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        0
+      ],
+      "id": "parse-validate-events",
+      "name": "Parse & Validate Events"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition-events-exist",
+              "leftValue": "={{ $json.events_count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        940,
+        0
+      ],
+      "id": "check-if-events-exist",
+      "name": "Check If Events Exist"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputMeta = $('Validate & Sanitize Input').first().json;\nconst eventsData = $('Parse & Validate Events').first().json;\n\nreturn [{\n  json: {\n    success: true,\n    status: \"EXTRACTED_UNSAVED\",\n    message: \"AI extraction successful. Database persistence is pending Member 2 schema finalization.\",\n    data: {\n      project_id: inputMeta.project_id,\n      filename: inputMeta.filename,\n      source_type: inputMeta.source_type,\n      events_count: eventsData.events_count,\n      events: eventsData.events\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        0
+      ],
+      "id": "format-response",
+      "name": "Format Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1400,
+        0
+      ],
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate & Sanitize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Sanitize Input": {
+      "main": [
+        [
+          {
+            "node": "AI Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Extraction": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate Events": {
+      "main": [
+        [
+          {
+            "node": "Check If Events Exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Events Exist": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
