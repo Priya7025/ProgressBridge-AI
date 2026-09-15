@@ -12,11 +12,10 @@ import {
   X,
   CheckCircle2,
   Loader2,
-  Trash2,
   FileSpreadsheet,
   FileType,
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
 type UploadStatus = 'READY' | 'PARSING' | 'EXTRACTING' | 'MATCHING' | 'COMPLETE'
@@ -49,11 +48,28 @@ function getFileIcon(filename: string) {
 export default function UploadPage() {
   const [files, setFiles] = useState<UploadFileItem[]>([])
   const [isDragging, setIsDragging] = useState(false)
+  const [fileError, setFileError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const allowedExtensions = ['xlsx', 'csv', 'txt', 'pdf']
 
   const handleFiles = (incomingFiles: File[]) => {
+    setFileError(null)
+    setSuccessMessage(null)
+
+    const invalidFiles = incomingFiles.filter((file) => {
+      const ext = file.name.split('.').pop()?.toLowerCase()
+      return !ext || !allowedExtensions.includes(ext)
+    })
+
+    if (invalidFiles.length > 0) {
+      setFileError(
+        `Unsupported file type (${invalidFiles.map((f) => f.name).join(', ')}). Only .xlsx, .csv, .txt, and .pdf files are allowed.`
+      )
+    }
+
     const validFiles = incomingFiles.filter((file) => {
       const ext = file.name.split('.').pop()?.toLowerCase()
       return ext && allowedExtensions.includes(ext)
@@ -98,44 +114,83 @@ export default function UploadPage() {
     setFiles((prev) => prev.filter((item) => item.id !== id))
   }
 
-  /**
-   * TEMPORARY SIMULATED PROGRESS PIPELINE:
-   * Simulates background processing stages (Parsing -> Extracting -> Matching -> Complete)
-   * roughly 1.5s per stage until real backend worker / Supabase Storage integration is connected.
-   */
-  const simulateUpload = (id: string) => {
-    // Stage 1: Parsing...
+  const uploadItem = async (item: UploadFileItem) => {
     setFiles((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: 'PARSING' } : item))
+      prev.map((f) => (f.id === item.id ? { ...f, status: 'PARSING' } : f))
     )
 
-    // Stage 2: Extracting...
-    setTimeout(() => {
-      setFiles((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, status: 'EXTRACTING' } : item))
-      )
-    }, 1500)
+    try {
+      const formData = new FormData()
+      formData.append('file', item.file)
 
-    // Stage 3: Matching...
-    setTimeout(() => {
-      setFiles((prev) =>
-        prev.map((item) => (item.id === item.id && item.id === id ? { ...item, status: 'MATCHING' } : item))
-      )
-    }, 3000)
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
 
-    // Stage 4: Complete
-    setTimeout(() => {
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Upload failed.')
+      }
+
       setFiles((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, status: 'COMPLETE' } : item))
+        prev.map((f) => (f.id === item.id ? { ...f, status: 'COMPLETE' } : f))
       )
-    }, 4500)
+      return { success: true, name: item.file.name }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Upload failed.'
+      setFiles((prev) =>
+        prev.map((f) => (f.id === item.id ? { ...f, status: 'READY' } : f))
+      )
+      return { success: false, name: item.file.name, error: msg }
+    }
   }
 
-  const handleUploadAll = () => {
+  const handleUploadSingle = async (item: UploadFileItem) => {
+    setFileError(null)
+    setSuccessMessage(null)
+    setIsUploading(true)
+
+    const res = await uploadItem(item)
+    setIsUploading(false)
+
+    if (res.success) {
+      setSuccessMessage(`Successfully uploaded ${res.name}.`)
+    } else {
+      setFileError(`Failed to upload ${res.name}: ${res.error}`)
+    }
+  }
+
+  const handleUploadAll = async () => {
+    setFileError(null)
+    setSuccessMessage(null)
+    setIsUploading(true)
+
     const readyFiles = files.filter((f) => f.status === 'READY')
-    readyFiles.forEach((fileItem) => {
-      simulateUpload(fileItem.id)
-    })
+    let successCount = 0
+    let failCount = 0
+    const errors: string[] = []
+
+    for (const item of readyFiles) {
+      const res = await uploadItem(item)
+      if (res.success) {
+        successCount++
+      } else {
+        failCount++
+        errors.push(`${res.name}: ${res.error}`)
+      }
+    }
+
+    setIsUploading(false)
+
+    if (successCount > 0 && failCount === 0) {
+      setSuccessMessage(`Successfully uploaded ${successCount} file(s).`)
+    } else if (failCount > 0) {
+      setFileError(
+        `Failed to upload ${failCount} file(s). ${errors.join('; ')}`
+      )
+    }
   }
 
   const getStatusBadge = (status: UploadStatus) => {
@@ -150,7 +205,7 @@ export default function UploadPage() {
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-[#337ab7]/20 text-[#337ab7] border border-[#337ab7]/40 rounded animate-pulse">
             <Loader2 className="size-3 animate-spin" />
-            Parsing...
+            Uploading...
           </span>
         )
       case 'EXTRACTING':
@@ -188,6 +243,32 @@ export default function UploadPage() {
           Upload construction schedules or daily progress reports. Accepted file formats: <strong className="text-[#e2bf29] font-mono">.xlsx, .csv, .txt, .pdf</strong>
         </p>
       </div>
+
+      {fileError && (
+        <div className="bg-[#111111] text-[#b71511] border border-[#b71511]/50 p-4 rounded-lg text-sm font-semibold shadow-sm flex items-center justify-between">
+          <span>{fileError}</span>
+          <button
+            type="button"
+            onClick={() => setFileError(null)}
+            className="text-xs text-[#f1f2f3]/60 hover:text-white underline cursor-pointer ml-4"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="bg-[#111111] text-emerald-400 border border-emerald-500/50 p-4 rounded-lg text-sm font-semibold shadow-sm flex items-center justify-between">
+          <span>{successMessage}</span>
+          <button
+            type="button"
+            onClick={() => setSuccessMessage(null)}
+            className="text-xs text-[#f1f2f3]/60 hover:text-white underline cursor-pointer ml-4"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* DRAG AND DROP ZONE */}
       <Card className="bg-[#070707] border-2 border-dashed border-[#e2bf29]/60 hover:border-[#e2bf29] transition-all rounded-lg shadow-sm">
@@ -231,10 +312,17 @@ export default function UploadPage() {
             </h3>
             <Button
               onClick={handleUploadAll}
-              disabled={!files.some((f) => f.status === 'READY')}
+              disabled={isUploading || !files.some((f) => f.status === 'READY')}
               className="bg-[#e2bf29] text-[#111111] font-bold rounded shadow-[rgba(226,191,41,0.3)_0px_0px_12px] hover:bg-[#c9a720] disabled:opacity-50 disabled:pointer-events-none transition-all cursor-pointer"
             >
-              Upload All
+              {isUploading ? (
+                <>
+                  <Loader2 className="size-4 animate-spin mr-1" />
+                  Uploading...
+                </>
+              ) : (
+                'Upload All'
+              )}
             </Button>
           </div>
 
@@ -265,8 +353,9 @@ export default function UploadPage() {
                     {item.status === 'READY' && (
                       <Button
                         size="sm"
-                        onClick={() => simulateUpload(item.id)}
-                        className="bg-[#e2bf29] text-[#111111] font-bold text-xs rounded hover:bg-[#c9a720] transition-colors cursor-pointer"
+                        disabled={isUploading}
+                        onClick={() => handleUploadSingle(item)}
+                        className="bg-[#e2bf29] text-[#111111] font-bold text-xs rounded hover:bg-[#c9a720] transition-colors cursor-pointer disabled:opacity-50"
                       >
                         Upload
                       </Button>
@@ -276,7 +365,7 @@ export default function UploadPage() {
                       size="icon-sm"
                       variant="ghost"
                       onClick={() => removeFile(item.id)}
-                      disabled={item.status !== 'READY' && item.status !== 'COMPLETE'}
+                      disabled={isUploading || (item.status !== 'READY' && item.status !== 'COMPLETE')}
                       className="text-[#f1f2f3]/70 hover:text-[#b71511] hover:bg-[#b71511]/10 rounded cursor-pointer"
                       title="Remove file"
                     >
@@ -292,3 +381,4 @@ export default function UploadPage() {
     </div>
   )
 }
+

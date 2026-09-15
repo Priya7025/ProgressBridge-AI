@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { ReviewItemActions } from '@/components/review/review-item-actions'
 import { FileText, Sparkles, AlertCircle, ArrowRight } from 'lucide-react'
 
@@ -158,7 +158,7 @@ export function ReviewTabsClient({
                       Extracted Site Progress Event
                     </h4>
                     <p className="text-sm font-medium text-[#ffffff] leading-relaxed bg-[#111111] p-3 rounded-lg border border-[#26241b]">
-                      "{item.activity_description}"
+                      &quot;{item.activity_description}&quot;
                     </p>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[#f1f2f3]/80 pt-1">
                       {item.discipline && (
@@ -280,7 +280,7 @@ export function ReviewTabsClient({
                       Logged Site Progress Event
                     </h4>
                     <p className="text-sm font-medium text-[#ffffff] leading-relaxed bg-[#111111] p-3 rounded-lg border border-[#26241b]">
-                      "{item.activity_description}"
+                      &quot;{item.activity_description}&quot;
                     </p>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#f1f2f3]/80">
                       {item.discipline && (

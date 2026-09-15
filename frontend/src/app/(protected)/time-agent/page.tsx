@@ -1,10 +1,5 @@
 'use client'
 
-/**
- * TODO: Replace this simulated response with a real call to an n8n webhook or Supabase function once the backend team defines one.
- * Currently, responses are mocked locally for UI demonstration and site testing.
- */
-
 import { useState, useRef, useEffect, FormEvent } from 'react'
 import { Send, Bot, User, Sparkles, Loader2, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -16,6 +11,7 @@ interface Message {
   sender: 'user' | 'agent'
   text: string
   timestamp: string
+  isError?: boolean
 }
 
 const EXAMPLE_PROMPTS = [
@@ -26,6 +22,86 @@ const EXAMPLE_PROMPTS = [
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function formatAgentResponse(resData: Record<string, any> | null | undefined): string {
+  if (!resData) return 'No response data received.'
+
+  const parts: string[] = []
+
+  // If response has a top-level message field, display it
+  if (resData.message && typeof resData.message === 'string') {
+    parts.push(resData.message)
+  }
+
+  // Direct match check at root level
+  const isMatched = resData.matched === true || resData.status === 'MATCHED' || Boolean(resData.matched_activity)
+  const isUnmatched = resData.status === 'UNMATCHED' || resData.matched === false
+
+  if (isMatched) {
+    const code =
+      resData.activity_code ||
+      resData.activity_id ||
+      resData.matched_activity?.activity_id ||
+      resData.matched_activity?.code ||
+      ''
+    const desc = resData.activity_description || resData.matched_activity?.description || resData.description || ''
+    const confidence =
+      resData.confidence_score ?? resData.confidence ?? resData.final_score ?? resData.matched_activity?.confidence
+    const confStr =
+      confidence !== undefined && confidence !== null
+        ? ` (Confidence: ${typeof confidence === 'number' ? (confidence <= 1 ? Math.round(confidence * 100) : confidence) : confidence}%)`
+        : ''
+    const codeDesc = [code, desc].filter(Boolean).join(' - ')
+    parts.push(`Matched Activity: ${codeDesc || 'Activity'}${confStr}`)
+  } else if (isUnmatched) {
+    const discipline = resData.discipline || resData.data?.discipline
+    const location = resData.location || resData.data?.location
+    const eventType = resData.event_type || resData.data?.event_type
+    const details = [discipline, location, eventType].filter(Boolean).join(' / ')
+    parts.push(`No confident match found for: ${details || 'reported event'}`)
+  }
+
+  // Events array check (e.g. from n8n extraction output)
+  const events = resData.events || resData.data?.events
+  if (Array.isArray(events) && events.length > 0) {
+    const eventSummaries = events.map((evt: Record<string, any>) => {
+      if (evt.matched === true || evt.status === 'MATCHED' || evt.matched_activity || evt.activity_code) {
+        const code = evt.activity_code || evt.activity_id || evt.matched_activity?.code || ''
+        const desc = evt.activity_description || evt.matched_activity?.description || ''
+        const confidence = evt.confidence_score ?? evt.confidence ?? evt.final_score
+        const confStr =
+          confidence !== undefined && confidence !== null
+            ? ` (Confidence: ${typeof confidence === 'number' ? (confidence <= 1 ? Math.round(confidence * 100) : confidence) : confidence}%)`
+            : ''
+        const codeDesc = [code, desc].filter(Boolean).join(' - ')
+        return `Matched Activity: ${codeDesc || 'Activity'}${confStr}`
+      } else if (evt.status === 'UNMATCHED') {
+        const details = [evt.discipline, evt.location, evt.event_type].filter(Boolean).join(' / ')
+        return `No confident match found for: ${details || evt.activity_description || 'reported activity'}`
+      } else {
+        const details = [
+          evt.event_type,
+          evt.discipline,
+          evt.location,
+          evt.quantity ? `Qty: ${evt.quantity}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+        return `Extracted Event: "${evt.activity_description}" [${details}]`
+      }
+    })
+    parts.push(...eventSummaries)
+  }
+
+  if (parts.length === 0) {
+    if (typeof resData === 'string') return resData
+    if (resData.raw && typeof resData.raw === 'string') return resData.raw
+    return JSON.stringify(resData, null, 2)
+  }
+
+  return parts.join('\n\n')
 }
 
 export default function TimeAgentPage() {
@@ -49,7 +125,7 @@ export default function TimeAgentPage() {
     scrollToBottom()
   }, [messages, isTyping])
 
-  const handleSend = (textToSend?: string) => {
+  const handleSend = async (textToSend?: string) => {
     const messageText = (textToSend ?? input).trim()
     if (!messageText || isTyping) return
 
@@ -65,21 +141,50 @@ export default function TimeAgentPage() {
     setInput('')
     setIsTyping(true)
 
-    /**
-     * SIMULATED AGENT RESPONSE:
-     * Parrots back a fake structured confirmation after a ~1s delay.
-     * TODO: Replace with real backend call (n8n webhook / Supabase function) when available.
-     */
-    setTimeout(() => {
-      const agentMsg: Message = {
+    try {
+      const res = await fetch('/api/time-agent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: messageText }),
+      })
+
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok || (data && data.error)) {
+        const errorMsg = data?.error || `Server returned error (${res.status})`
+        const agentErrorMsg: Message = {
+          id: `agent-${Date.now()}`,
+          sender: 'agent',
+          text: `Couldn't process that — ${errorMsg}. Try again?`,
+          timestamp: formatTime(new Date()),
+          isError: true,
+        }
+        setMessages((prev) => [...prev, agentErrorMsg])
+      } else {
+        const responseText = formatAgentResponse(data)
+        const agentMsg: Message = {
+          id: `agent-${Date.now()}`,
+          sender: 'agent',
+          text: responseText,
+          timestamp: formatTime(new Date()),
+        }
+        setMessages((prev) => [...prev, agentMsg])
+      }
+    } catch (err: unknown) {
+      const errMessage = err instanceof Error ? err.message : 'Network error'
+      const agentErrorMsg: Message = {
         id: `agent-${Date.now()}`,
         sender: 'agent',
-        text: `Got it — logging: "${messageText}". This is a SIMULATED response, not yet connected to the real extraction pipeline.`,
+        text: `Couldn't process that — ${errMessage}. Try again?`,
         timestamp: formatTime(new Date()),
+        isError: true,
       }
-      setMessages((prev) => [...prev, agentMsg])
+      setMessages((prev) => [...prev, agentErrorMsg])
+    } finally {
       setIsTyping(false)
-    }, 1000)
+    }
   }
 
   const handleSubmit = (e: FormEvent) => {
@@ -104,7 +209,7 @@ export default function TimeAgentPage() {
               Time Agent
             </h1>
             <p className="text-sm text-[#f1f2f3]/80 font-sans">
-              Tell me what happened at site — I'll log it.
+              Tell me what happened at site — I&apos;ll log it.
             </p>
           </div>
         </div>
@@ -129,9 +234,11 @@ export default function TimeAgentPage() {
                   )}
 
                   <div
-                    className={`p-3.5 rounded-lg text-sm leading-relaxed shadow-sm ${
+                    className={`p-3.5 rounded-lg text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${
                       isUser
                         ? 'bg-primary text-on-primary font-medium rounded-br-none'
+                        : msg.isError
+                        ? 'bg-[#b71511]/10 text-[#ffffff] border border-[#b71511]/50 rounded-bl-none'
                         : 'bg-surface-container-low text-white border border-[#e2bf29]/20 rounded-bl-none'
                     }`}
                   >
@@ -166,7 +273,7 @@ export default function TimeAgentPage() {
                 </div>
                 <div className="bg-surface-container-low text-[#f1f2f3] border border-[#e2bf29]/20 p-3 rounded-lg rounded-bl-none flex items-center gap-2 text-xs">
                   <Loader2 className="size-3.5 animate-spin text-[#e2bf29]" />
-                  <span>Time Agent is processing your log...</span>
+                  <span>Agent is thinking...</span>
                 </div>
               </div>
             </div>

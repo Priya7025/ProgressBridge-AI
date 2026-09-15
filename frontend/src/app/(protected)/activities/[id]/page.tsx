@@ -135,14 +135,30 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
     redirect('/time-agent')
   }
 
-  // 1. Fetch schedule_activity row by ID
-  const { data: activityData } = await supabase
-    .from('schedule_activities')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle()
+  // 1. Fetch schedule_activity row by ID (UUID) or activity_id (code)
+  const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)
 
-  const activity = activityData as ScheduleActivity | null
+  let activityData: ScheduleActivity | null = null
+
+  if (isUuid) {
+    const { data } = await supabase
+      .from('schedule_activities')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    activityData = data as ScheduleActivity | null
+  }
+
+  if (!activityData) {
+    const { data } = await supabase
+      .from('schedule_activities')
+      .select('*')
+      .eq('activity_id', id)
+      .maybeSingle()
+    activityData = data as ScheduleActivity | null
+  }
+
+  const activity = activityData
 
   if (!activity) {
     return (
@@ -175,11 +191,11 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
           *
         )
       `)
-      .eq('activity_id', id),
+      .eq('activity_id', activity.id),
     supabase
       .from('audit_log')
       .select('*')
-      .eq('activity_id', id)
+      .eq('activity_id', activity.id)
       .order('created_at', { ascending: false }),
   ])
 
@@ -191,10 +207,10 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
   return (
     <div className="space-y-6 bg-[#000000] min-h-full p-2 sm:p-4">
       <Link
-        href="/dashboard"
+        href="/activities"
         className="text-sm font-bold text-[#e2bf29] hover:underline inline-flex items-center gap-1.5 transition-colors"
       >
-        ← Back to Dashboard
+        ← Back to Activities
       </Link>
 
       {/* 1. HEADER CARD */}
@@ -203,19 +219,19 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <span className="text-xs font-mono font-bold text-[#e2bf29] uppercase tracking-wide">
-                {activity.activity_id}
+                {activity.activity_id || 'UNNAMED'}
               </span>
               <CardTitle className="font-heading text-2xl font-bold tracking-tight text-[#ffffff] mt-0.5">
-                {activity.description}
+                {activity.description || 'No description provided'}
               </CardTitle>
             </div>
             <div>
               <span
                 className={`inline-block px-3 py-1 text-xs font-bold font-heading uppercase rounded ${getStatusBadgeClass(
-                  activity.status
+                  activity.status || ''
                 )}`}
               >
-                {activity.status.replace('_', ' ')}
+                {(activity.status || 'NOT_STARTED').replace('_', ' ')}
               </span>
             </div>
           </div>

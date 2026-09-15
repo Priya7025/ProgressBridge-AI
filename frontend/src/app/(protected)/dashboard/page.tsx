@@ -57,8 +57,25 @@ export default async function DashboardPage() {
 
   if (!activeProjectId) {
     return (
-      <div className="p-8 text-center text-muted-foreground font-medium">
-        No data yet for this project
+      <div className="space-y-8 p-4 sm:p-8 bg-[#000000] min-h-full">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight font-heading text-[#e2bf29]">
+            Project Dashboard
+          </h2>
+          <p className="text-sm text-[#f1f2f3]/80 font-sans mt-1">
+            Real-time activity progress & metrics summary
+          </p>
+        </div>
+        <Card className="bg-[#111111] text-[#ffffff] border border-[#e2bf29]/30 rounded-lg p-10 text-center shadow-md">
+          <CardContent className="space-y-2 pt-2">
+            <p className="text-base font-semibold text-[#ffffff]">
+              No active project assigned
+            </p>
+            <p className="text-xs text-[#f1f2f3]/70 font-sans max-w-md mx-auto">
+              Your account currently has no project assigned. Please contact a project administrator to assign a project to your profile.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -76,14 +93,55 @@ export default async function DashboardPage() {
       .eq('project_id', activeProjectId),
   ])
 
+  // Database / API Error State
+  if (summaryRes.error || disciplineRes.error) {
+    const errorMsg = summaryRes.error?.message || disciplineRes.error?.message || 'Database query failed'
+    return (
+      <div className="space-y-8 p-4 sm:p-8 bg-[#000000] min-h-full">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight font-heading text-[#e2bf29]">
+            Project Dashboard
+          </h2>
+        </div>
+        <Card className="bg-[#111111] text-[#ffffff] border border-[#b71511]/50 rounded-lg p-8 text-center shadow-md">
+          <CardContent className="space-y-2 pt-2">
+            <p className="text-base font-semibold text-[#b71511]">
+              Failed to load dashboard metrics
+            </p>
+            <p className="text-xs text-[#f1f2f3]/80 font-mono">
+              {errorMsg}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   const summary: DashboardSummary | null = summaryRes.data
   const disciplineData: DisciplineProgressItem[] | null = disciplineRes.data
 
-  // Graceful fallback if either query fails or returns no summary rows
-  if (summaryRes.error || disciplineRes.error || !summary) {
+  // Empty project data state (no summary recorded yet)
+  if (!summary) {
     return (
-      <div className="p-8 text-center text-muted-foreground font-medium">
-        No data yet for this project
+      <div className="space-y-8 p-4 sm:p-8 bg-[#000000] min-h-full">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight font-heading text-[#e2bf29]">
+            Project Dashboard
+          </h2>
+          <p className="text-sm text-[#f1f2f3]/80 font-sans mt-1">
+            Real-time activity progress & metrics summary
+          </p>
+        </div>
+        <Card className="bg-[#111111] text-[#ffffff] border border-[#e2bf29]/30 rounded-lg p-10 text-center shadow-md">
+          <CardContent className="space-y-2 pt-2">
+            <p className="text-base font-semibold text-[#ffffff]">
+              No progress data yet for this project
+            </p>
+            <p className="text-xs text-[#f1f2f3]/70 font-sans max-w-md mx-auto">
+              Once site updates or schedules are processed, activity progress metrics will appear here.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -91,27 +149,27 @@ export default async function DashboardPage() {
   const kpis = [
     {
       title: 'Total Activities',
-      value: summary.total_activities ?? 0,
+      value: typeof summary.total_activities === 'number' ? summary.total_activities : 0,
       accentClass: 'border-[#e2bf29]/30 hover:border-[#e2bf29]',
     },
     {
       title: 'Completed',
-      value: summary.completed ?? 0,
+      value: typeof summary.completed === 'number' ? summary.completed : 0,
       accentClass: 'border-[#e2bf29]/30 hover:border-[#e2bf29]',
     },
     {
       title: 'Delayed',
-      value: summary.delayed ?? 0,
+      value: typeof summary.delayed === 'number' ? summary.delayed : 0,
       accentClass: 'border-l-4 border-l-[#b71511] text-[#b71511]',
     },
     {
       title: 'Pending Review',
-      value: summary.pending_review ?? 0,
+      value: typeof summary.pending_review === 'number' ? summary.pending_review : 0,
       accentClass: 'border-l-4 border-l-[#337ab7] text-[#337ab7]',
     },
     {
       title: 'Unmatched',
-      value: summary.unmatched ?? 0,
+      value: typeof summary.unmatched === 'number' ? summary.unmatched : 0,
       accentClass: 'border-[#e2bf29]/30 hover:border-[#e2bf29]',
     },
   ]

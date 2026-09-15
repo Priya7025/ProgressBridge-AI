@@ -36,11 +36,31 @@ export default async function ActivitiesPage() {
   }
 
   // 4. Fetch all schedule_activities rows for the project, ordered by activity_id
-  const { data: activitiesData } = await supabase
+  const { data: activitiesData, error: activitiesErr } = await supabase
     .from('schedule_activities')
     .select('*')
     .eq('project_id', activeProjectId)
     .order('activity_id', { ascending: true })
+
+  if (activitiesErr) {
+    return (
+      <div className="space-y-6 bg-[#000000] min-h-full p-4 sm:p-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-heading font-display text-[#e2bf29]">
+            Activities
+          </h1>
+        </div>
+        <div className="bg-[#111111] text-[#ffffff] border border-[#b71511]/50 rounded-lg p-8 text-center shadow-md">
+          <p className="text-base font-semibold text-[#b71511]">
+            Failed to load schedule activities
+          </p>
+          <p className="text-xs text-[#f1f2f3]/80 font-mono mt-1">
+            {activitiesErr.message}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   const activities = (activitiesData as ScheduleActivity[] | null) ?? []
 
