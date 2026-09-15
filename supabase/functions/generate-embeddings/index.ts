@@ -218,12 +218,7 @@ Deno.serve(async (req: Request) => {
 
         let topCandidate: MatchCandidate | null = null;
         if (candidates && candidates.length > 0) {
-          const typedCandidates = candidates as MatchCandidate[];
-          // If PIP-2458 is in the candidate pool for line 24-xx erection events, select the primary baseline activity
-          const headlineCandidate = typedCandidates.find(
-            (c) => c.activity_code === "PIP-2458" && Number(c.identifier_score) > 0.5
-          );
-          topCandidate = headlineCandidate || typedCandidates[0];
+          topCandidate = (candidates as MatchCandidate[])[0];
         }
 
         if (topCandidate) {
