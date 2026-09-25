@@ -1,0 +1,25 @@
+PROGRESSBRIDGE AI - SITE PROGRESS REPORT
+PROJECT: OIL Demo Refinery Expansion
+DATE: 2026-08-21
+REPORT TYPE: Daily Field Diary - Instrumentation, Control & HSE Safety
+PREPARED BY: Priya Nair, Lead Instrumentation & Safety Engineer
+
+1. INSTRUMENTATION & CONTROLS:
+- Smart Transmitter Calibration:
+  Field 5-point calibration and 4-20mA loop verification of smart pressure transmitters completed at Process Train A Instrument Stanchion Corridor (INST-TRAIN-A).
+- Marshalling Cabinet Wiring:
+  Glanding, ferrule dressing, and landing shielded twisted pair cables on DCS terminal strips inside Central Control Room Marshalling Cabinets (DCS-MARSH-01).
+- Flame Detector Alignment:
+  Installing multi-spectrum IR3 flame sensors and aiming optical field of view across plant perimeter (FGS-DET-01).
+
+2. HSE & SAFETY SYSTEMS:
+- Firewater Hydrant Flow Testing:
+  Bolting up cast-iron wet barrel fire hydrants and measuring discharge flow and static head along Plant Firewater Ring Main Hydrant Post Grid (HYDRANT-POST-01).
+- Radiography Radiation Boundary Sweep:
+  Surveyed radiation dose rates and set up physical barricading with flashing beacons for gamma NDE radiography (NDT-RAD-EXCL).
+- Safety Shower Commissioning:
+  Connecting potable supply to combination safety shower/eyewash and testing audio-visual flow alarm switches (SS-EW-01).
+
+3. UNSCHEDULED / ADMINISTRATIVE TASK:
+- Safety Committee Monthly Tea Meeting:
+  HSE team organized a 45-minute monthly safety committee tea refreshment session in the temporary canteen shed.

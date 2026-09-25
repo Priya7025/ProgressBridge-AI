@@ -1,0 +1,39 @@
+PROGRESSBRIDGE AI - SITE DIARY (ELECTRICAL & CONTROLS)
+DATE: 2026-08-16
+LOCATION: Substation 01 & Process Area
+SUPERVISOR: Amitava Bose, Electrical Construction Lead
+
+FIELD PROGRESS OBSERVATIONS:
+1. Substation 33kV Cable Tray:
+   Electrical crew finished putting up 42 meters of the 450mm perforated galvanized tray raceways inside the 33kV switchgear room ceiling space (SWG-33KV-01).
+
+2. 11kV Room Ladder Trays:
+   Bracket fabricators welded heavy-duty unistrut wall supports and hung the vertical ladder cable rack running up to the 11kV switchboard cubicles (SWG-11KV-01).
+
+3. MCC-01 Conduit Runs:
+   Electricians bent and threaded 2-inch rigid steel conduits (RGS) connecting MCC-Train A (MCC-TRAIN-A) to local push-button stations.
+
+4. Explosion-Proof Box Sealing:
+   Mounted hazardous-area Ex-d junction boxes and poured Chico sealing compound at MCC-02 room (MCC-TRAIN-B).
+
+5. 33kV Duct Bank Cable Pull:
+   Winched the 3-core 240 sq mm 33kV high voltage armored cable through the concrete duct bank into the CCR battery equipment room (UPS-BAT-ROOM).
+
+6. Lug Crimping:
+   Used 12-ton hydraulic crimper with hex dies to crimp heavy tinned copper lugs onto phase conductors in trench corridor A (TRNCH-ELEC-01).
+
+7. 33kV Cold-Shrink Terminations:
+   Certified jointer completed 33kV cold-shrink stress cone termination kits on top tier pipe rack cable tray run (TRAY-RACK-01).
+
+8. Earth Rods & Earth Resistance:
+   Sunk three 3-meter copper-bonded ground rods near ESD panel enclosure (ESD-PNL-01). Fall-of-potential test gave 1.8 ohms, comfortably under the 2.0 ohm limit.
+
+9. Cadweld Earthing Connections:
+   Completed 8 exothermic thermite Cadweld shots bonding 50x6mm copper tape to perimeter grounding grid at Fire & Gas panel shelter (FGS-PNL-01).
+
+NON-SCHEDULE INCIDENT / ANOMALY:
+10. Temporary Dewatering of Fabrication Yard:
+    Emergency callout: Cleared debris and pumped standing storm runoff out of temporary fabrication yard ditch after torrential overnight rain. Took 4 laborers and 1 submersible pump roughly 4 hours.
+
+CREW ON SITE:
+- 1 Electrical Superintendent, 4 Foremen, 16 Electricians, 2 Certified Jointers, 8 Helpers.

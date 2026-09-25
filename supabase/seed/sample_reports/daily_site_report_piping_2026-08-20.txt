@@ -1,0 +1,32 @@
+PROGRESSBRIDGE AI - SITE PROGRESS REPORT
+PROJECT: OIL Demo Refinery Expansion
+DATE: 2026-08-20
+REPORT TYPE: Daily Field Diary - Piping & Mechanical Erection
+PREPARED BY: Somnath Mukherjee, Lead Piping Construction Engineer
+WEATHER: Sunny, 32°C, wind 8 km/h
+
+SUMMARY OF FIELD ACTIVITIES:
+1. Line 24-XX Spool Erection (PRD Demo Headline Case - Start Event):
+   24-XX spool erection started at 10:30 AM in North Unit. Rigging crew positioned the 8-inch carbon steel line onto structural rack supports.
+
+2. Line 24-XX Erection Completion (PRD Demo Headline Case - Completion Event):
+   Line 24-XX erection completed on 31-Aug. Final alignment and drift pin removal checked off by QA inspector.
+
+3. Exact Baseline Match Test Case:
+   Erect Line 24-XX
+
+4. Abbreviation & Field Jargon Case:
+   PWHT & NDT on CS line 18-B completed. Certified tech recorded 12-pt thermal charts and 100% PAUT on 8 butt joints at South Unit.
+
+5. Ambiguous Multiple Match Case:
+   Hydrotesting process line in Train A completed with calibrated gauge holding 36 bar. (Ambiguous: Multiple hydrotest packages in Train A without specific line ID).
+
+6. Delay Reason Case:
+   Piping erection halted on Line 18-B in South Unit due to 4-day delay in receiving Class 600 isolation check valve from vendor.
+
+7. Flange Torque Tightening:
+   Cross-pattern torque tightening of Class 300/600 raised-face flanges with spiral gaskets completed at Crude Tank Farm Loading Manifold (Line 24-TF-502).
+
+UNSCHEDULED / NON-BASELINE ENTRIES:
+8. Site Office AC Unloading:
+   Piping crew assisted logistics team in unloading 3 wooden crates of office air conditioners at the main administrative gate.
