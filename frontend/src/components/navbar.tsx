@@ -33,7 +33,7 @@ export function Navbar() {
   ].filter((link) => link.show)
 
   return (
-    <header className="w-full bg-card/95 dark:bg-[#070707] text-card-foreground border-b border-border/40 sticky top-0 z-50 shadow-md backdrop-blur-sm transition-colors duration-200">
+    <header className="w-full bg-card/95 text-card-foreground border-b border-border/40 sticky top-0 z-50 shadow-md backdrop-blur-sm transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
         {/* Brand & Desktop Navigation */}
         <div className="flex items-center gap-6 lg:gap-8">

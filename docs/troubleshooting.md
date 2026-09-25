@@ -1,92 +1,169 @@
-# ProgressBridge AI — Troubleshooting & Incident Guide
+# ProgressBridge AI — Operational Troubleshooting & Incident Guide
 
-This document captures real issues, symptoms, root causes, workarounds, and fallbacks encountered during testing and integration. Keep this document accessible during Day 2 rehearsals and the final presentation.
-
----
-
-## 1. Confirmed Issues & Active Diagnostics
-
-### Issue 1: Invalid Gemini Model Identifier in n8n Workflows
-- **Symptom**: AI extraction fails with `404 Model Not Found` or crashes the n8n execution when invoking the Google Gemini Chat Model node.
-- **Root Cause**: The exported workflow JSON (`n8n/workflows/free-text-ingestion.json` and `n8n/workflows/member1-ai-extraction.json`) specifies `"modelName": "models/gemini-3.6-flash"`. `gemini-3.6-flash` is not a valid Google API model name.
-- **Status**: **Pending Member 1**
-- **Owner**: Member 1 (Ingestion)
-- **Fix / Workaround**:
-  - Update the n8n Google Gemini Chat Model node `modelName` parameter to `models/gemini-1.5-flash` or `models/gemini-2.0-flash`.
-  - Re-export the workflow JSON to `n8n/workflows/`.
+This document provides practical root-cause diagnostics, commands, and resolution steps for all operational scenarios across the **ProgressBridge AI** platform.
 
 ---
 
-### Issue 2: Asset Field Extraction Gap (`asset` = `null`)
-- **Symptom**: Field reports like *"24-XX spool erection started at 10:30 AM in North Unit"* produce `discipline = "Piping"`, `location = "North Unit"`, and `activity_description = "24-XX spool erection"`, but `asset = null` in the `progress_events` table. Consequently, `identifier_score` is computed as `0.0`, causing the matcher to score `PIP-2420` higher than `PIP-2458`.
-- **Root Cause**: The Structured Output Parser prompt does not explicitly instruct the LLM to isolate equipment/line tags (e.g., `24-XX`, `Line 24-XX`) into the `asset` JSON field, allowing it to remain embedded in `activity_description`.
-- **Status**: **Pending Member 1**
-- **Owner**: Member 1 (Ingestion)
-- **Fix / Workaround**:
-  - Add explicit extraction guidelines and few-shot examples in the Gemini prompt:
-    > *"Extract equipment numbers, line numbers, or asset tags (e.g., 'Line 24-XX', '24-XX', 'E-101') into the 'asset' field."*
-  - Verify that `progress_events.asset` contains `"Line 24-XX"` or `"24-XX"` upon submission.
+## 1. Quick Diagnostic Table
+
+| Symptom / Issue | Primary Root Cause | Quick Fix Command / Action |
+|---|---|---|
+| **Frontend not starting** | Port 3000 in use or missing `node_modules` | `npx kill-port 3000 && cd frontend && npm run dev` |
+| **Missing Environment Variables** | `frontend/.env.local` missing or incomplete | Copy template and verify `NEXT_PUBLIC_SUPABASE_URL` |
+| **Supabase Connection Problem** | Network timeout or invalid API keys | Check `frontend/.env.local` and ping REST endpoint |
+| **Login / Authentication Failure** | Incorrect credentials or expired user session | Use pre-configured planner account or reset password |
+| **Empty Dashboard** | Project ID mismatch in query filter | Ensure `NEXT_PUBLIC_DEMO_PROJECT_ID` matches database |
+| **Activities Not Loading** | Supabase query error or missing project activities | Run `python tests/e2e/e2e_golden_flow_test.py` to verify baseline |
+| **Time Agent / Extraction Failure** | n8n webhook offline or model name invalid | Check webhook status or trigger local API fallback |
+| **Matching / Review Queue Empty** | Matching service not executed or match rows missing | Run E2E pipeline script to re-evaluate matches |
+| **Accept Match Action Fails** | Supabase RLS restriction or missing permissions | Ensure using valid authenticated session or service role |
+| **Dashboard Not Refreshing** | Next.js server cache or stale client state | Hard refresh browser (`Ctrl + F5`) |
+| **Demo Reset Fails** | Timeout on large batch deletion | Trigger `POST /api/demo/reset` with 45s timeout |
+| **Build / Lint / Typecheck Fails** | Unused imports, type mismatches, or schema discrepancies | Run `npm run typecheck && npm run lint` to view details |
+| **Browser / CDP / Manual QA Issues** | Playwright CDN download blocked or Chrome origin flags | Run `python tests/e2e/browser_cdp_test.py` with `--remote-allow-origins=*` |
 
 ---
 
-### Issue 3: Asynchronous Webhook Timing / Immediate 200 Response
-- **Symptom**: Submitting a report via `/api/time-agent` returns HTTP 200 immediately with `data.events = []`. The frontend displays a success toast, but the review queue does not show the new item until several seconds later after a manual page refresh.
-- **Root Cause**: The n8n Webhook node responds immediately upon payload receipt (`onReceived` mode) rather than holding the HTTP connection until the LangChain LLM chain and Supabase insertion nodes finish.
-- **Status**: **Pending Member 1**
-- **Owner**: Member 1 (Ingestion) & Member 3 (Frontend)
-- **Fix / Workaround**:
-  - In n8n, change the Webhook node **Response Mode** to `"Using 'Respond to Webhook' Node"`.
-  - Place a **Respond to Webhook** node at the very end of the workflow, returning the inserted `progress_event` record.
-  - Frontend fallback: Polling / re-fetching `/api/review-queue` automatically after a 2-second delay.
+## 2. Step-by-Step Diagnostic Procedures
+
+### 1. Frontend Not Starting
+**Symptoms:** `npm run dev` fails with `EADDRINUSE: address already in use :::3000` or module not found.  
+**Resolution:**
+```powershell
+# Free port 3000 and restart
+Get-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess -ErrorAction SilentlyContinue | Stop-Process -Force
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
-### Issue 4: ngrok Tunnel Instability & Rate Limiting
-- **Symptom**: `POST /api/time-agent` occasionally fails with `502 Bad Gateway`, `ERR_NGROK_3200` (offline tunnel), or session timeouts when local n8n machine sleeps or ngrok restarts.
-- **Root Cause**: Reliance on local n8n routed through ephemeral ngrok tunnels rather than a cloud-hosted instance.
-- **Status**: **In Progress (Deployment to Render)**
-- **Owner**: Member 1 (Ingestion) & Member 4 (QA / Integration)
-- **Fix / Workaround**:
-  - Complete the Render n8n deployment with persistent storage and a permanent public webhook endpoint.
-  - Update `INGESTION_WEBHOOK_URL` in `.env.local` and Vercel environment settings to point to `https://<render-subdomain>.onrender.com/webhook/ingest-text`.
+### 2. Missing Environment Variables
+**Symptoms:** `TypeError: Cannot read properties of undefined (reading 'replace')` on Supabase initialization.  
+**Resolution:**
+Confirm that `frontend/.env.local` contains all required keys:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://jopmivqiwaaznuogczjl.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_DEMO_PROJECT_ID=1c1711c7-11f8-43f0-babe-e6a7cefe1ad4
+INGESTION_WEBHOOK_URL=https://<n8n-domain>/webhook/ingest-text
+```
 
 ---
 
-### Issue 5: Duplicate Submission Handling (Lack of Idempotency)
-- **Symptom**: Submitting the exact same report text multiple times creates duplicate rows in `progress_events` and multiple duplicate review cards in `activity_matches`.
-- **Root Cause**: No deduplication or idempotency check (e.g., hashing `(project_id, raw_text, submission_date)` or checking for recent identical pending events) exists prior to Supabase insertion.
-- **Status**: **Known Limitation / P1 Improvement**
-- **Owner**: Member 1 (Ingestion) & Member 2 (Matching)
-- **Fix / Workaround**:
-  - Short-term (Demo): Instruct demo presenter to click the submit button only once and observe loading states.
-  - Long-term: Implement an idempotency check in the n8n ingestion node or Supabase trigger to reject/merge submissions within a 60-second window.
+### 3. Supabase Connection Problems
+**Symptoms:** Network timeouts, `ERR_CONNECTION_REFUSED`, or HTTP 401 Unauthorized.  
+**Resolution:**
+Test REST connectivity directly via cURL:
+```powershell
+curl -I -H "apikey: <YOUR_SUPABASE_ANON_KEY>" "https://jopmivqiwaaznuogczjl.supabase.co/rest/v1/schedule_activities?limit=1"
+```
+If connection fails, verify network proxies or check Supabase dashboard status.
 
 ---
 
-## 2. Emergency Fallback Plan: "If n8n is Unreachable During Demo"
-
-If n8n or ngrok goes down during the live presentation or evaluation:
-
-### What to Explain to Judges
-1. **Architecture Resilience**:
-   > *"ProgressBridge AI is designed with a decoupled event-driven architecture. The supervisor ingestion layer uses asynchronous webhooks that isolate field communications from the core matching and project scheduling engine."*
-2. **Direct Inspection & Review**:
-   > *"While the external messaging webhook is queuing field logs, let's look at how our hybrid matcher processes incoming progress events and links them to Level 5/6 schedule activities."*
-
-### Step-by-Step Live Fallback Actions
-1. **Direct Schedule / Review Flow**:
-   - Navigate directly to the **Review Queue** (`/review`) where pre-staged pending events are waiting.
-   - Walk through the matching breakdown (Semantic 50%, Identifier 25%, Discipline 15%, Location 10%).
-   - Click **Accept** on `PIP-2458` to demonstrate the real database transaction, actual date updates, and delay calculation (+8 days).
-2. **Demo Reset & Re-seed**:
-   - If a clean state is required, call `POST /api/demo/reset` to restore the 890-activity schedule and clean test state.
+### 4. Login Problems
+**Symptoms:** Submitting credentials on `/login` displays `"Invalid login credentials"`.  
+**Resolution:**
+1. Ensure email is `pbchauhan246@gmail.com` (Project Planner).
+2. Reset/sync password via Supabase Admin API:
+```powershell
+python -c "import urllib.request, json; req = urllib.request.Request('https://jopmivqiwaaznuogczjl.supabase.co/auth/v1/admin/users/904be87c-988c-40ac-b9d2-a37ac32ef84e', data=json.dumps({'password': 'Password123!'}).encode(), headers={'apikey': '<SERVICE_ROLE_KEY>', 'Authorization': 'Bearer <SERVICE_ROLE_KEY>', 'Content-Type': 'application/json'}, method='PUT'); print(urllib.request.urlopen(req).status)"
+```
 
 ---
 
-## 3. Quick Verification Checklist Before Presentations
+### 5. Empty Dashboard / Activities Not Loading
+**Symptoms:** Dashboard shows 0 total activities or activities table is blank.  
+**Resolution:**
+1. Verify that `NEXT_PUBLIC_DEMO_PROJECT_ID` matches the project ID associated with the 890 baseline activities (`1c1711c7-11f8-43f0-babe-e6a7cefe1ad4`).
+2. Verify table count directly in database:
+```powershell
+python -c "import urllib.request, json; req = urllib.request.Request('https://jopmivqiwaaznuogczjl.supabase.co/rest/v1/schedule_activities?project_id=eq.1c1711c7-11f8-43f0-babe-e6a7cefe1ad4&select=count', headers={'apikey': '<ANON_KEY>', 'Prefer': 'count=exact', 'Range-Unit': 'items'}); resp = urllib.request.urlopen(req); print('Count header:', resp.headers.get('Content-Range'))"
+```
 
-- [ ] `DEMO_PROJECT_ID` is `1c1711c7-11f8-43f0-babe-e6a7cefe1ad4` in all `.env` files.
-- [ ] Render / ngrok webhook URL is live (`curl -I <INGESTION_WEBHOOK_URL>`).
-- [ ] Golden demo activity `PIP-2458` exists in database (`SELECT id, code, name FROM schedule_activities WHERE code = 'PIP-2458'`).
-- [ ] Review queue loads real data from Supabase (`GET /api/review-queue`).
-- [ ] Dev server running smoothly with `npm run dev`.
+---
+
+### 6. Time Agent & Extraction Failure
+**Symptoms:** Submitting a report in `/time-agent` returns `502 Bad Gateway` or extraction card does not render.  
+**Resolution:**
+- If hosted n8n webhook is temporarily offline, Next.js server route `/api/time-agent` automatically falls back to local structured extraction to ensure demo continuity.
+- Test endpoint directly:
+```powershell
+curl -X POST http://localhost:3000/api/time-agent -H "Content-Type: application/json" -d "{\"text\": \"24-XX spool erection started at 10:30 AM in North Unit.\", \"projectId\": \"1c1711c7-11f8-43f0-babe-e6a7cefe1ad4\"}"
+```
+
+---
+
+### 7. Matching & Review Queue Issues
+**Symptoms:** `/review` queue is empty after submitting a report.  
+**Resolution:**
+Execute the automated matching step to evaluate hybrid scores and populate `activity_matches`:
+```powershell
+python tests/e2e/e2e_golden_flow_test.py
+```
+
+---
+
+### 8. Accept Match Failure
+**Symptoms:** Clicking "Accept Match" in `/review` displays an error toast or does not update activity status.  
+**Resolution:**
+1. Verify `activity_matches` record exists and is in `PENDING` or `PENDING_REVIEW` state.
+2. Confirm user is signed in with Planner role (`pbchauhan246@gmail.com`).
+3. Check browser console (F12) for network errors.
+
+---
+
+### 9. Dashboard Not Refreshing / Stale Metrics
+**Symptoms:** Delayed count does not update after accepting `PIP-2458`.  
+**Resolution:**
+- Next.js Server Components query `project_dashboard_summary` view live on every request. Perform a hard browser refresh (`Ctrl + F5` or `Cmd + Shift + R`) to bypass browser-cached HTML.
+
+---
+
+### 10. Demo Reset
+**Symptoms:** Need to reset the application to a clean baseline state before presenting to judges.  
+**Resolution:**
+Trigger the demo reset API route:
+```powershell
+curl -X POST http://localhost:3000/api/demo/reset -H "Content-Type: application/json" -d "{\"projectId\":\"1c1711c7-11f8-43f0-babe-e6a7cefe1ad4\"}"
+```
+*Result: Resets dynamic progress events, matches, and audit logs while preserving all 890 baseline schedule activities.*
+
+---
+
+### 11. Code Quality & Build Validation
+**Symptoms:** CI pipeline or local build fails.  
+**Resolution:**
+Run the complete multi-tier test and quality validation suite:
+```powershell
+# 1. Frontend Typecheck
+cd frontend
+npm run typecheck
+
+# 2. Frontend Linting
+npm run lint
+
+# 3. Next.js Production Build
+npm run build
+
+# 4. Python Linting
+cd ..
+python -m ruff check data/scripts tests
+
+# 5. Full Automated E2E Pipeline Suite
+python tests/e2e/e2e_golden_flow_test.py
+```
+
+---
+
+### 12. Browser & CDP Automation Issues
+**Symptoms:** `playwright.azureedge.net` download fails with 404 in sandboxed runners, or CDP WebSocket returns 403 Forbidden.  
+**Resolution:**
+- Always launch Chrome or Edge with `--remote-allow-origins=*` flag when using Chrome DevTools Protocol automation.
+- Run the dedicated local CDP test runner:
+```powershell
+python tests/e2e/browser_cdp_test.py
+```
