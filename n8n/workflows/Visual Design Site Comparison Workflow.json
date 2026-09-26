@@ -21,7 +21,7 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const body = $json.body ?? $json;\n\nconst projectId = body.project_id;\nconst activityId = body.activity_id;\nconst designImageUrl = body.design_image_url;\nconst siteImageUrl = body.site_image_url;\n\nif (!projectId || typeof projectId !== \"string\") {\n  throw new Error(\"Validation Error: project_id is required.\");\n}\n\nif (!activityId || typeof activityId !== \"string\") {\n  throw new Error(\"Validation Error: activity_id is required.\");\n}\n\nif (!designImageUrl || typeof designImageUrl !== \"string\") {\n  throw new Error(\"Validation Error: design_image_url is required.\");\n}\n\nif (!siteImageUrl || typeof siteImageUrl !== \"string\") {\n  throw new Error(\"Validation Error: site_image_url is required.\");\n}\n\nreturn {\n  json: {\n    project_id: projectId.trim(),\n    activity_id: activityId.trim(),\n    design_image_url: designImageUrl.trim(),\n    site_image_url: siteImageUrl.trim(),\n    received_at: new Date().toISOString()\n  }\n};"
+        "jsCode": "const body = $json.body ?? $json;\n\nconst projectId = body.project_id;\nconst activityId = body.activity_id;\n\nconst designImageUrl = body.design_image_url;\nconst siteImageUrl = body.site_image_url;\n\nif (!projectId || typeof projectId !== 'string') {\n  throw new Error(\"Validation Error: project_id is required.\");\n}\n\nif (!activityId || typeof activityId !== 'string') {\n  throw new Error(\"Validation Error: activity_id is required.\");\n}\n\nif (!designImageUrl || typeof designImageUrl !== 'string') {\n  throw new Error(\"Validation Error: design_image_url is required.\");\n}\n\nif (!siteImageUrl || typeof siteImageUrl !== 'string') {\n  throw new Error(\"Validation Error: site_image_url is required.\");\n}\n\nreturn {\n  json: {\n    project_id: projectId.trim(),\n    activity_id: activityId.trim(),\n\n    design_image_url: designImageUrl.trim(),\n    site_image_url: siteImageUrl.trim(),\n\n    received_at: new Date().toISOString()\n  }\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -56,14 +56,14 @@
           "mode": "list",
           "cachedResultName": "models/gemini-3.6-flash"
         },
-        "text": "={{ $json.comparison_prompt }}",
-        "inputType": "binary",
+        "text": "={{ $('Prepare Comparison Prompt').item.json.comparison_prompt }}",
+        "imageUrls": "={{ $('Validate Comparison Input').item.json.design_image_url + ',' + $('Validate Comparison Input').item.json.site_image_url }}",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1.2,
       "position": [
-        1120,
+        1568,
         0
       ],
       "id": "038e02d0-356f-4937-90e9-5ffc602ed526",
@@ -84,7 +84,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1344,
+        1792,
         0
       ],
       "id": "16373fa5-07be-4cce-a54a-435a46ffafbb",
@@ -98,7 +98,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1568,
+        2016,
         0
       ],
       "id": "4a7f0085-24ac-4ed7-bd64-9a6fa617f076",
@@ -107,12 +107,12 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const data = $json;\n\nreturn {\n  json: {\n    project_id: data.project_id,\n    activity_id: data.activity_id,\n\n    asset_consistent: data.asset_consistent,\n    view_consistent: data.view_consistent,\n\n    visual_similarity: data.visual_similarity,\n\n    completion_state: data.completion_state,\n\n    confidence: data.confidence,\n\n    differences: data.differences,\n\n    validation_status: data.validation_status,\n\n    comparison_status: \"COMPLETED\",\n\n    compared_at: new Date().toISOString()\n  }\n};"
+        "jsCode": "const data = $json;\n\nreturn {\n  json: {\n    project_id: data.project_id,\n    activity_id: data.activity_id,\n\n    design_image_id: data.design_image_id,\n    site_image_id: data.site_image_id,\n\n    asset_consistent: data.asset_consistent,\n    view_consistent: data.view_consistent,\n    visual_similarity: data.visual_similarity,\n    completion_state: data.completion_state,\n    confidence: data.confidence,\n    differences: data.differences,\n\n    validation_status: data.validation_status,\n    comparison_status: \"COMPLETED\",\n    compared_at: new Date().toISOString()\n  }\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1792,
+        2240,
         0
       ],
       "id": "0ffa7ab9-6256-4d12-9743-f6f4eb82bb54",
@@ -127,7 +127,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        2016,
+        2688,
         0
       ],
       "id": "d6ae2dec-83bd-4d29-80d5-b1765c5fc3c9",
@@ -141,7 +141,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1392,
+        1840,
         144
       ],
       "id": "dd42753b-e361-4a28-89fb-c1bde4cdd297",
@@ -156,7 +156,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1616,
+        2064,
         144
       ],
       "id": "1d95c776-6675-4df6-b017-2521f0c5fc75",
@@ -164,11 +164,39 @@
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/visual/comparisons",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": " application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  design_image_id: $('Upload Design Image').item.json.data.id,\n  site_image_id: $('Upload Site Image').item.json.data.id,\n\n  view_match_score: $json.view_consistent ? 1 : 0,\n  visual_similarity: $json.visual_similarity,\n  completion_state: $json.completion_state,\n  differences: $json.differences,\n  confidence: $json.confidence,\n  status: \"PENDING_REVIEW\",\n  notes: \"Verified via Gemini Vision\"\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2464,
+        0
+      ],
+      "id": "4bf0465b-6ff0-4fa9-b631-275897c1bd7c",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
         "url": "={{ $json.design_image_url }}",
         "options": {
           "response": {
             "response": {
-              "responseFormat": "file"
+              "responseFormat": "file",
+              "outputPropertyName": "design_data"
             }
           }
         }
@@ -180,15 +208,16 @@
         0
       ],
       "id": "0e583562-da55-4dd6-aa4b-29e2e577e1ce",
-      "name": "HTTP Request"
+      "name": "Download Design Image"
     },
     {
       "parameters": {
-        "url": "={{ $json.site_image_url }}",
+        "url": "={{ $('Validate Comparison Input').item.json.site_image_url }}",
         "options": {
           "response": {
             "response": {
-              "responseFormat": "file"
+              "responseFormat": "file",
+              "outputPropertyName": "site_data"
             }
           }
         }
@@ -196,11 +225,99 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        896,
+        1120,
         0
       ],
       "id": "4aed68d7-b0c2-456c-9e46-05dba61f31c0",
-      "name": "HTTP Request1"
+      "name": "Download Site Image"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/visual/design-images",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "design_data"
+            },
+            {
+              "name": "project_id",
+              "value": "1c1711c7-11f8-43f0-babe-e6a7cefe1ad4"
+            },
+            {
+              "name": "activity_id",
+              "value": "2030a2db-0469-4e3a-9c23-5fae2a711142"
+            },
+            {
+              "name": "view_type",
+              "value": "FRONT"
+            },
+            {
+              "name": "preUploadedPath",
+              "value": "https://jopmivqiwaaznuogczjl.supabase.co/storage/v1/object/public/visual-evidence/projects/1c1711c7-11f8-43f0-babe-e6a7cefe1ad4/activities/2030a2db-0469-4e3a-9c23-5fae2a711142/design/test_front_design_1790351576094.jpg"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        0
+      ],
+      "id": "e8ac77f4-4f2d-45b9-a82a-ba3c14d3a701",
+      "name": "Upload Design Image"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/visual/site-images",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "site_data"
+            },
+            {
+              "name": "project_id",
+              "value": "1c1711c7-11f8-43f0-babe-e6a7cefe1ad4"
+            },
+            {
+              "name": "activity_id",
+              "value": "2030a2db-0469-4e3a-9c23-5fae2a711142"
+            },
+            {
+              "name": "view_type",
+              "value": "FRONT"
+            },
+            {
+              "name": "capture_date",
+              "value": "2026-08-20"
+            },
+            {
+              "name": "preUploadedPath",
+              "value": "projects/1c1711c7-11f8-43f0-babe-e6a7cefe1ad4/activities/2030a2db-0469-4e3a-9c23-5fae2a711142/site/test_front_site_1790351576094.jpg"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1344,
+        0
+      ],
+      "id": "f32aec7e-4938-406a-ad10-a64fa45e36b0",
+      "name": "Upload Site Image"
     }
   ],
   "pinData": {},
@@ -231,7 +348,7 @@
       "main": [
         [
           {
-            "node": "HTTP Request",
+            "node": "Download Design Image",
             "type": "main",
             "index": 0
           }
@@ -282,7 +399,7 @@
       "main": [
         [
           {
-            "node": "Respond to Webhook",
+            "node": "HTTP Request2",
             "type": "main",
             "index": 0
           }
@@ -300,18 +417,51 @@
         ]
       ]
     },
-    "HTTP Request": {
+    "HTTP Request2": {
       "main": [
         [
           {
-            "node": "HTTP Request1",
+            "node": "Respond to Webhook",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP Request1": {
+    "Download Design Image": {
+      "main": [
+        [
+          {
+            "node": "Upload Design Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Site Image": {
+      "main": [
+        [
+          {
+            "node": "Upload Site Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Design Image": {
+      "main": [
+        [
+          {
+            "node": "Download Site Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Site Image": {
       "main": [
         [
           {
@@ -328,7 +478,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "a86df796-b43f-4e30-8835-9575808d7b8f",
+  "versionId": "f01579ce-237f-4715-898e-d4824617df24",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "79eb2363fbee7cc30d906fa9b6a70f1543b705b16a2432881d5a56a205a3de49"

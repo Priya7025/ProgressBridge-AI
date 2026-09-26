@@ -127,7 +127,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        2096,
+        2048,
         0
       ],
       "id": "a16e8f22-456a-4da1-b46e-9b60676f90c8",
@@ -347,7 +347,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "6e24b642-d8a5-48f9-9f4b-874d842669d9",
+  "versionId": "65082d41-5237-4d1d-b5ac-6cd5e699abff",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "79eb2363fbee7cc30d906fa9b6a70f1543b705b16a2432881d5a56a205a3de49"
