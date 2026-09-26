@@ -17,20 +17,30 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const handleSignOut = async () => {
+    // Delete role cookie
+    document.cookie = 'pb_user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()
   }
 
-  const isPlanner = currentUser?.role === 'planner'
+  const isPlanner = currentUser?.role !== 'supervisor'
+  const isSupervisor = currentUser?.role === 'supervisor'
 
   const navLinks = [
-    { name: 'Time Agent', href: '/time-agent', show: true },
-    { name: 'Upload', href: '/upload', show: true },
-    { name: 'Dashboard', href: '/dashboard', show: isPlanner },
+    { name: isSupervisor ? 'Activity Center' : 'Dashboard', href: '/dashboard', show: true },
     { name: 'Review', href: '/review', show: isPlanner },
     { name: 'Activities', href: '/activities', show: isPlanner },
+    { name: 'Time Agent', href: '/time-agent', show: true },
+    { name: 'Upload', href: '/upload', show: true },
   ].filter((link) => link.show)
+
+  const handleSwitchRole = () => {
+    const nextRole = currentUser?.role === 'supervisor' ? 'planner' : 'supervisor'
+    document.cookie = `pb_user_role=${nextRole}; path=/; max-age=86400`
+    router.push(`/dashboard?role=${nextRole}`)
+    router.refresh()
+  }
 
   return (
     <header className="w-full bg-card/95 dark:bg-[#070707] text-card-foreground border-b border-border/40 sticky top-0 z-50 shadow-md backdrop-blur-sm transition-colors duration-200">
@@ -38,7 +48,7 @@ export function Navbar() {
         {/* Brand & Desktop Navigation */}
         <div className="flex items-center gap-6 lg:gap-8">
           <Link
-            href="/time-agent"
+            href="/dashboard"
             className="text-lg sm:text-xl font-bold tracking-tight text-primary font-heading hover:opacity-90 transition-opacity flex items-center gap-1.5"
           >
             <Sparkles className="size-4 sm:size-5 text-primary shrink-0" />
@@ -76,9 +86,15 @@ export function Navbar() {
           <ThemeToggle />
 
           {currentUser?.role && (
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/40 bg-muted/60 text-primary capitalize tracking-wide shadow-sm">
-              {currentUser.role}
-            </span>
+            <button
+              type="button"
+              onClick={handleSwitchRole}
+              title="Click to switch workspace (Planner / Supervisor)"
+              className="text-xs font-semibold px-2.5 py-1 rounded-full border border-primary/40 bg-muted/60 hover:bg-primary/20 text-primary capitalize tracking-wide shadow-sm transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <span>{currentUser.role}</span>
+              <span className="text-[10px] text-muted-foreground">⇄</span>
+            </button>
           )}
           <Button
             variant="outline"
@@ -96,9 +112,15 @@ export function Navbar() {
           <ThemeToggle />
 
           {currentUser?.role && (
-            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border border-primary/40 bg-muted/60 text-primary capitalize tracking-wide">
-              {currentUser.role}
-            </span>
+            <button
+              type="button"
+              onClick={handleSwitchRole}
+              title="Click to switch workspace"
+              className="text-[11px] font-semibold px-2 py-0.5 rounded-full border border-primary/40 bg-muted/60 hover:bg-primary/20 text-primary capitalize tracking-wide cursor-pointer flex items-center gap-1"
+            >
+              <span>{currentUser.role}</span>
+              <span className="text-[9px] text-muted-foreground">⇄</span>
+            </button>
           )}
           <button
             type="button"
@@ -158,5 +180,3 @@ export function Navbar() {
     </header>
   )
 }
-
-

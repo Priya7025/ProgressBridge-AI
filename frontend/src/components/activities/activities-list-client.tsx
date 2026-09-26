@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Search, Filter, Calendar, MapPin, Tag } from 'lucide-react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { Search, Filter, Calendar, MapPin, Tag, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 export interface ScheduleActivity {
   id: string
@@ -29,6 +30,13 @@ export interface ScheduleActivity {
 
 interface ActivitiesListClientProps {
   initialActivities: ScheduleActivity[]
+  totalCount: number
+  currentPage: number
+  pageSize: number
+  initialDiscipline: string
+  initialStatus: string
+  initialSearch: string
+  initialSort: string
 }
 
 const DISCIPLINES = [
@@ -39,6 +47,15 @@ const DISCIPLINES = [
   'Electrical',
   'Instrumentation',
   'HSE',
+]
+
+const STATUSES = [
+  { label: 'All Statuses', value: 'All' },
+  { label: 'Not Started', value: 'NOT_STARTED' },
+  { label: 'In Progress', value: 'IN_PROGRESS' },
+  { label: 'Pending Review', value: 'PENDING_REVIEW' },
+  { label: 'Completed', value: 'COMPLETED' },
+  { label: 'Delayed', value: 'DELAYED' },
 ]
 
 function getStatusBadgeClass(status: string) {
@@ -68,94 +85,118 @@ function formatDate(dateStr: string | null): string {
   })
 }
 
-export function ActivitiesListClient({ initialActivities }: ActivitiesListClientProps) {
+export function ActivitiesListClient({
+  initialActivities,
+  totalCount,
+  currentPage,
+  pageSize,
+  initialDiscipline,
+  initialStatus,
+  initialSearch,
+  initialSort,
+}: ActivitiesListClientProps) {
   const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedDiscipline, setSelectedDiscipline] = useState('All')
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
 
-  // Filter activities client-side
-  const filteredActivities = initialActivities.filter((act) => {
-    const matchesSearch =
-      !searchQuery.trim() ||
-      act.activity_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      act.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const [searchQuery, setSearchQuery] = useState(initialSearch)
+  const [selectedDiscipline, setSelectedDiscipline] = useState(initialDiscipline)
+  const [selectedStatus, setSelectedStatus] = useState(initialStatus)
+  const [selectedSort, setSelectedSort] = useState(initialSort)
 
-    const matchesDiscipline =
-      selectedDiscipline === 'All' ||
-      (act.discipline &&
-        act.discipline.toLowerCase() === selectedDiscipline.toLowerCase())
+  const totalPages = Math.ceil(totalCount / pageSize) || 1
 
-    return matchesSearch && matchesDiscipline
-  })
+  const updateFilters = (updates: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams.toString())
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value && value !== 'All' && value !== 'code' && value !== '') {
+        params.set(key, value)
+      } else {
+        params.delete(key)
+      }
+    })
+    // Reset to page 1 on filter changes unless page itself is being changed
+    if (!updates.page) {
+      params.delete('page')
+    }
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`)
+    })
+  }
 
-  if (initialActivities.length === 0) {
-    return (
-      <div className="space-y-6 w-full">
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight font-heading font-display text-primary">
-            Activities
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground font-sans mt-1">
-            0 activities
-          </p>
-        </div>
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val)
+    updateFilters({ search: val, discipline: selectedDiscipline, status: selectedStatus, sort: selectedSort })
+  }
 
-        <Card className="bg-card text-card-foreground border border-border/60 rounded-xl p-8 sm:p-12 text-center shadow-md">
-          <CardContent className="space-y-4 pt-4">
-            <p className="text-sm sm:text-base font-medium text-muted-foreground">
-              No activities yet — upload a schedule to get started
-            </p>
-            <div>
-              <Link
-                href="/upload"
-                className="inline-flex items-center justify-center px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg shadow-md hover:opacity-90 transition-opacity"
-              >
-                Go to Upload
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
+  const handleDisciplineChange = (val: string) => {
+    setSelectedDiscipline(val)
+    updateFilters({ search: searchQuery, discipline: val, status: selectedStatus, sort: selectedSort })
+  }
+
+  const handleStatusChange = (val: string) => {
+    setSelectedStatus(val)
+    updateFilters({ search: searchQuery, discipline: selectedDiscipline, status: val, sort: selectedSort })
+  }
+
+  const handleSortChange = (val: string) => {
+    setSelectedSort(val)
+    updateFilters({ search: searchQuery, discipline: selectedDiscipline, status: selectedStatus, sort: val })
+  }
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('page', newPage.toString())
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`)
+    })
   }
 
   return (
-    <div className="space-y-6 w-full transition-colors duration-200">
+    <div className={`space-y-6 w-full transition-colors duration-200 ${isPending ? 'opacity-70 pointer-events-none' : ''}`}>
       {/* PAGE HEADER */}
-      <div>
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight font-heading font-display text-primary">
-          Activities
-        </h1>
-        <p className="text-xs sm:text-sm text-muted-foreground font-sans mt-1">
-          {filteredActivities.length === initialActivities.length
-            ? `${initialActivities.length} activities`
-            : `Showing ${filteredActivities.length} of ${initialActivities.length} activities`}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight font-heading font-display text-primary">
+            Schedule Activities
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground font-sans mt-1">
+            Showing {initialActivities.length} of {totalCount} total activities (Page {currentPage} of {totalPages})
+          </p>
+        </div>
+
+        <Link
+          href="/upload"
+          className="inline-flex items-center justify-center px-4 py-2 text-xs sm:text-sm font-bold bg-primary text-primary-foreground rounded-lg shadow-md hover:opacity-90 transition-opacity self-start sm:self-auto"
+        >
+          Upload Schedule
+        </Link>
       </div>
 
       {/* FILTER & SEARCH CONTROLS */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Search Input */}
-        <div className="relative flex-1">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-primary" />
           <Input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by Activity ID or Description..."
-            className="pl-9 bg-background border-border/60 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/50 focus-visible:border-primary h-10 text-sm rounded-lg"
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Search Activity ID or Description..."
+            className="pl-9 bg-background border-border/60 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary/50 focus-visible:border-primary h-10 text-xs sm:text-sm rounded-lg"
           />
         </div>
 
         {/* Discipline Filter Select */}
-        <div className="relative w-full sm:w-56">
+        <div className="relative">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-primary">
             <Filter className="size-4" />
           </div>
           <select
             value={selectedDiscipline}
-            onChange={(e) => setSelectedDiscipline(e.target.value)}
-            className="w-full bg-background border border-border/60 text-foreground pl-9 pr-4 h-10 text-sm rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/50 cursor-pointer appearance-none"
+            onChange={(e) => handleDisciplineChange(e.target.value)}
+            className="w-full bg-background border border-border/60 text-foreground pl-9 pr-8 h-10 text-xs sm:text-sm rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/50 cursor-pointer appearance-none"
           >
             {DISCIPLINES.map((disc) => (
               <option key={disc} value={disc} className="bg-card text-foreground">
@@ -167,13 +208,53 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
             ▼
           </div>
         </div>
+
+        {/* Status Filter Select */}
+        <div className="relative">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-primary">
+            <Tag className="size-4" />
+          </div>
+          <select
+            value={selectedStatus}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            className="w-full bg-background border border-border/60 text-foreground pl-9 pr-8 h-10 text-xs sm:text-sm rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/50 cursor-pointer appearance-none"
+          >
+            {STATUSES.map((st) => (
+              <option key={st.value} value={st.value} className="bg-card text-foreground">
+                {st.label}
+              </option>
+            ))}
+          </select>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground text-xs">
+            ▼
+          </div>
+        </div>
+
+        {/* Sort Select */}
+        <div className="relative">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-primary">
+            <ArrowUpDown className="size-4" />
+          </div>
+          <select
+            value={selectedSort}
+            onChange={(e) => handleSortChange(e.target.value)}
+            className="w-full bg-background border border-border/60 text-foreground pl-9 pr-8 h-10 text-xs sm:text-sm rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/50 cursor-pointer appearance-none"
+          >
+            <option value="code" className="bg-card text-foreground">Sort: Activity Code</option>
+            <option value="deadline_nearest" className="bg-card text-foreground">Deadline: Nearest First</option>
+            <option value="deadline_farthest" className="bg-card text-foreground">Deadline: Farthest First</option>
+          </select>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground text-xs">
+            ▼
+          </div>
+        </div>
       </div>
 
       {/* NO MATCHES FALLBACK */}
-      {filteredActivities.length === 0 ? (
+      {initialActivities.length === 0 ? (
         <Card className="bg-card text-card-foreground border border-border/60 rounded-xl p-8 text-center shadow-md">
           <p className="text-sm text-muted-foreground font-sans">
-            No activities match your current search or discipline filter.
+            No schedule activities match your filter settings.
           </p>
         </Card>
       ) : (
@@ -193,7 +274,7 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
-                  {filteredActivities.map((act) => (
+                  {initialActivities.map((act) => (
                     <tr
                       key={act.id}
                       onClick={() => router.push(`/activities/${act.id}`)}
@@ -229,7 +310,7 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
                             act.status
                           )}`}
                         >
-                          {act.status.replace('_', ' ')}
+                          {(act.status || 'NOT_STARTED').replace('_', ' ')}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-sm text-muted-foreground whitespace-nowrap">
@@ -244,7 +325,7 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
 
           {/* MOBILE CARD LIST VIEW */}
           <div className="block md:hidden space-y-3">
-            {filteredActivities.map((act) => (
+            {initialActivities.map((act) => (
               <Link
                 key={act.id}
                 href={`/activities/${act.id}`}
@@ -259,7 +340,7 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
                       act.status
                     )}`}
                   >
-                    {act.status.replace('_', ' ')}
+                    {(act.status || 'NOT_STARTED').replace('_', ' ')}
                   </span>
                 </div>
 
@@ -290,6 +371,37 @@ export function ActivitiesListClient({ initialActivities }: ActivitiesListClient
               </Link>
             ))}
           </div>
+
+          {/* PAGINATION CONTROLS */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t border-border/40">
+              <span className="text-xs text-muted-foreground">
+                Page <strong className="text-foreground font-bold">{currentPage}</strong> of <strong className="text-foreground font-bold">{totalPages}</strong>
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage <= 1 || isPending}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  className="h-8 text-xs flex items-center gap-1 cursor-pointer"
+                >
+                  <ChevronLeft className="size-3.5" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage >= totalPages || isPending}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  className="h-8 text-xs flex items-center gap-1 cursor-pointer"
+                >
+                  Next
+                  <ChevronRight className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

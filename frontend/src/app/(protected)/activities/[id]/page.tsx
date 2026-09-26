@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { VisualProgressClient } from '@/components/activities/visual-progress-client'
 
 interface ScheduleActivity {
   id: string
@@ -73,6 +74,8 @@ interface PageProps {
   params: Promise<{ id: string }> | { id: string }
 }
 
+const SCHEDULE_COLUMNS = 'id, project_id, activity_id, wbs, level, description, discipline, location, asset, planned_start, planned_finish, duration, status, actual_start, actual_finish, created_at, updated_at'
+
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return 'Not yet recorded'
   const date = new Date(dateStr)
@@ -110,32 +113,22 @@ function getStatusBadgeClass(status: string) {
 }
 
 export default async function ActivityDetailsPage({ params }: PageProps) {
-  const resolvedParams = await params
-  const { id } = resolvedParams
-
   const supabase = await createClient()
 
-  // Authenticated user check
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // 1. Resolve params & auth concurrently
+  const [resolvedParams, authRes] = await Promise.all([
+    params,
+    supabase.auth.getUser(),
+  ])
 
+  const user = authRes.data.user
   if (!user) {
     redirect('/login')
   }
 
-  // Route Guard: Supervisors are restricted from planner-only activities details
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  const { id } = resolvedParams
 
-  if (profile?.role === 'supervisor') {
-    redirect('/time-agent')
-  }
-
-  // 1. Fetch schedule_activity row by ID (UUID) or activity_id (code)
+  // 3. Fetch schedule_activity row by ID or activity_id excluding heavy vector column
   const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)
 
   let activityData: ScheduleActivity | null = null
@@ -143,7 +136,7 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
   if (isUuid) {
     const { data } = await supabase
       .from('schedule_activities')
-      .select('*')
+      .select(SCHEDULE_COLUMNS)
       .eq('id', id)
       .maybeSingle()
     activityData = data as ScheduleActivity | null
@@ -152,7 +145,7 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
   if (!activityData) {
     const { data } = await supabase
       .from('schedule_activities')
-      .select('*')
+      .select(SCHEDULE_COLUMNS)
       .eq('activity_id', id)
       .maybeSingle()
     activityData = data as ScheduleActivity | null
@@ -181,7 +174,9 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
     )
   }
 
-  // 2. Fetch linked activity_matches with progress_events & audit_log rows concurrently for activity.id
+  const targetActivityIds = Array.from(new Set([activity.id, activity.activity_id].filter(Boolean) as string[]))
+
+  // 4. Concurrently fetch matches and audit logs using both UUID and activity_id code
   const [matchesRes, auditRes] = await Promise.all([
     supabase
       .from('activity_matches')
@@ -191,18 +186,42 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
           *
         )
       `)
-      .eq('activity_id', activity.id),
+      .in('activity_id', targetActivityIds),
     supabase
       .from('audit_log')
       .select('*')
-      .eq('activity_id', activity.id)
+      .in('activity_id', targetActivityIds)
       .order('created_at', { ascending: false }),
   ])
 
   const matches = (matchesRes.data as ActivityMatchWithEvent[] | null) ?? []
   const auditLogs = (auditRes.data as AuditLogEntry[] | null) ?? []
 
-  const delayDays = calculateDelayDays(activity.planned_finish, activity.actual_finish)
+  // Extract recorded events from matches (ignoring rejected ones)
+  const validEvents = matches
+    .filter((m) => m.match_status !== 'REJECTED')
+    .map((m) => (Array.isArray(m.progress_events) ? m.progress_events[0] : m.progress_events))
+    .filter((evt): evt is ProgressEvent => Boolean(evt && evt.event_date && evt.status !== 'REJECTED'))
+
+  const eventDates = validEvents
+    .map((e) => e.event_date!)
+    .filter(Boolean)
+    .sort()
+
+  const derivedActualStart = eventDates.length > 0 ? eventDates[0] : null
+
+  const completionEvent = validEvents.find(
+    (e) =>
+      e.event_type === 'COMPLETED' ||
+      e.event_type === 'FINISH' ||
+      e.activity_description?.toLowerCase().includes('completed')
+  )
+  const derivedActualFinish = completionEvent?.event_date || null
+
+  const actualStart = activity.actual_start || derivedActualStart
+  const actualFinish = activity.actual_finish || derivedActualFinish
+
+  const delayDays = calculateDelayDays(activity.planned_finish, actualFinish)
 
   return (
     <div className="space-y-6 w-full">
@@ -294,11 +313,11 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <span className="text-xs text-muted-foreground block">Actual Start</span>
-                  <span className="font-bold text-foreground">{formatDate(activity.actual_start)}</span>
+                  <span className="font-bold text-foreground">{formatDate(actualStart)}</span>
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground block">Actual Finish</span>
-                  <span className="font-bold text-foreground">{formatDate(activity.actual_finish)}</span>
+                  <span className="font-bold text-foreground">{formatDate(actualFinish)}</span>
                 </div>
               </div>
             </div>
@@ -329,7 +348,17 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
         </CardContent>
       </Card>
 
-      {/* 3. SOURCE REPORTS CARD */}
+      {/* 3. VISUAL EXECUTION VERIFICATION CARD */}
+      <VisualProgressClient
+        activityId={activity.id}
+        activityCode={activity.activity_id || 'UNNAMED'}
+        projectId={activity.project_id}
+        userId={user.id}
+        discipline={activity.discipline}
+        location={activity.location}
+      />
+
+      {/* 4. SOURCE REPORTS CARD */}
       <Card className="bg-card text-card-foreground border border-border shadow-sm rounded-lg">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-bold font-heading uppercase tracking-wider text-primary">
@@ -422,7 +451,7 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
         </CardContent>
       </Card>
 
-      {/* 4. AUDIT HISTORY CARD */}
+      {/* 5. AUDIT HISTORY CARD */}
       <Card className="bg-card text-card-foreground border border-border shadow-sm rounded-lg">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-bold font-heading uppercase tracking-wider text-primary">

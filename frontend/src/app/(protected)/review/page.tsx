@@ -51,17 +51,17 @@ export default async function ReviewPage() {
   if (reviewRes.error || unmatchedRes.error) {
     const errorMsg = reviewRes.error?.message || unmatchedRes.error?.message || 'Database query failed'
     return (
-      <div className="space-y-6 bg-[#000000] min-h-full p-4 sm:p-6">
+      <div className="space-y-6 bg-background min-h-full p-4 sm:p-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-heading text-[#e2bf29]">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight font-heading text-primary">
             Activity Review
           </h1>
         </div>
-        <div className="bg-[#111111] text-[#ffffff] border border-[#b71511]/50 rounded-lg p-8 text-center shadow-md">
-          <p className="text-base font-semibold text-[#b71511]">
+        <div className="bg-card text-card-foreground border border-destructive/40 rounded-xl p-8 text-center shadow-md">
+          <p className="text-base font-semibold text-destructive">
             Failed to load review items
           </p>
-          <p className="text-xs text-[#f1f2f3]/80 font-mono mt-1">
+          <p className="text-xs text-muted-foreground font-mono mt-1">
             {errorMsg}
           </p>
         </div>

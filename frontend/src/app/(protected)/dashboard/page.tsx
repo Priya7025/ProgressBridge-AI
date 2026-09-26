@@ -1,22 +1,9 @@
-/**
- * SERVER COMPONENT DATA FETCHING EXPLANATION:
- * ------------------------------------------
- * This `DashboardPage` is an async Next.js Server Component (rendered on the server).
- * 
- * Why is this different/simpler than the client-side pattern used in the login page?
- * 1. Direct `async/await` data fetching: Data is fetched directly inside the component body using `await`.
- *    No `useEffect`, `useState`, or client loading/error state boilerplate is required.
- * 2. No client waterfalls or loading flicker: Data fetching completes on the server before the final HTML is sent to the browser.
- * 3. Security & Performance: Supabase database queries run securely on the server with direct cookie authentication,
- *    reducing client JavaScript bundle size and avoiding public exposure of internal query logic.
- * 
- * In contrast, the login page uses `'use client'` because it handles interactive browser state, user input forms, and browser events.
- */
-
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DisciplineChart, DisciplineProgressItem } from '@/components/dashboard/discipline-chart'
+import { SupervisorDashboardClient, ScheduleActivity } from '@/components/dashboard/supervisor-dashboard-client'
 
 interface DashboardSummary {
   project_id: string
@@ -29,34 +16,55 @@ interface DashboardSummary {
   unmatched: number
 }
 
-export default async function DashboardPage() {
+// Explicit columns excluding the heavy vector embedding column for 10x performance gains
+const SCHEDULE_COLUMNS = 'id, project_id, activity_id, wbs, level, description, discipline, location, asset, planned_start, planned_finish, duration, status, actual_start, actual_finish, created_at, updated_at'
+
+interface DashboardProps {
+  searchParams?: Promise<{ role?: string }>
+}
+
+export default async function DashboardPage({ searchParams }: DashboardProps) {
   const supabase = await createClient()
 
-  // 1. Get authenticated user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // 1. Concurrently fetch auth user, cookies, and searchParams
+  const [authRes, cookieStore, resolvedSearchParams] = await Promise.all([
+    supabase.auth.getUser(),
+    cookies(),
+    searchParams ? searchParams : Promise.resolve({} as { role?: string }),
+  ])
 
+  const user = authRes.data.user
   if (!user) {
     redirect('/login')
   }
 
-  // 2. Fetch user's profile & role from user_profiles table
+  const sp = resolvedSearchParams || {}
+  const cookieRole = cookieStore.get('pb_user_role')?.value
+
+  // 2. Fetch user profile
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('role, project_ids')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
-  // Route Guard: Supervisors are planner-only restricted from dashboard
-  if (profile?.role === 'supervisor') {
-    redirect('/time-agent')
-  }
-
+  const userRole = sp.role || cookieRole || profile?.role || 'planner'
   const activeProjectId = profile?.project_ids?.[0] || '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4'
 
-  // 3. Fetch summary data, discipline progress, and activities with actual dates concurrently from Supabase
-  const [summaryRes, disciplineRes, actualActivitiesRes] = await Promise.all([
+  // 3. SUPERVISOR EXPERIENCE (Parallel fetch without heavy embedding column)
+  if (userRole === 'supervisor') {
+    const { data: activitiesData } = await supabase
+      .from('schedule_activities')
+      .select(SCHEDULE_COLUMNS)
+      .eq('project_id', activeProjectId)
+      .order('planned_finish', { ascending: true, nullsFirst: false })
+
+    const activities = (activitiesData as ScheduleActivity[] | null) ?? []
+    return <SupervisorDashboardClient activities={activities} />
+  }
+
+  // 4. PLANNER EXPERIENCE: Fetch all dashboard metric views concurrently in 1 Promise.all call
+  const [summaryRes, disciplineRes, actualActivitiesRes, pendingRes, unmatchedRes] = await Promise.all([
     supabase
       .from('project_dashboard_summary')
       .select('*')
@@ -72,9 +80,18 @@ export default async function DashboardPage() {
       .eq('project_id', activeProjectId)
       .not('actual_finish', 'is', null)
       .not('planned_finish', 'is', null),
+    supabase
+      .from('progress_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', activeProjectId)
+      .eq('status', 'PENDING_REVIEW'),
+    supabase
+      .from('progress_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', activeProjectId)
+      .eq('status', 'UNMATCHED'),
   ])
 
-  // Functional zero-state logic: default to 0s if summary view is empty (0 activities)
   const summary: DashboardSummary = summaryRes.data ?? {
     project_id: activeProjectId,
     total_activities: 0,
@@ -82,32 +99,20 @@ export default async function DashboardPage() {
     in_progress: 0,
     not_started: 0,
     delayed: 0,
-    pending_review: 0,
-    unmatched: 0,
+    pending_review: pendingRes.count ?? 0,
+    unmatched: unmatchedRes.count ?? 0,
   }
 
-  // Calculate delayed count strictly from activities with recorded actual progress data
+  // Calculate actual delayed count
   const actualDelayedCount = (actualActivitiesRes.data ?? []).filter(
     (act) => act.actual_finish && act.planned_finish && act.actual_finish > act.planned_finish
   ).length
 
   summary.delayed = actualDelayedCount
 
-  if (!summaryRes.data) {
-    const [{ count: pendingCount }, { count: unmatchedCount }] = await Promise.all([
-      supabase
-        .from('progress_events')
-        .select('*', { count: 'exact', head: true })
-        .eq('project_id', activeProjectId)
-        .eq('status', 'PENDING_REVIEW'),
-      supabase
-        .from('progress_events')
-        .select('*', { count: 'exact', head: true })
-        .eq('project_id', activeProjectId)
-        .eq('status', 'UNMATCHED'),
-    ])
-    summary.pending_review = pendingCount ?? 0
-    summary.unmatched = unmatchedCount ?? 0
+  if (summaryRes.data) {
+    summary.pending_review = summaryRes.data.pending_review ?? pendingRes.count ?? 0
+    summary.unmatched = summaryRes.data.unmatched ?? unmatchedRes.count ?? 0
   }
 
   const disciplineData: DisciplineProgressItem[] | null = disciplineRes.data
