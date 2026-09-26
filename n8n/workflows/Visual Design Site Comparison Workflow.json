@@ -57,13 +57,13 @@
           "cachedResultName": "models/gemini-3.6-flash"
         },
         "text": "={{ $json.comparison_prompt }}",
-        "imageUrls": "={{ $json.design_image_url }} {{ $json.site_image_url }}",
+        "inputType": "binary",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1.2,
       "position": [
-        672,
+        1120,
         0
       ],
       "id": "038e02d0-356f-4937-90e9-5ffc602ed526",
@@ -84,7 +84,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        896,
+        1344,
         0
       ],
       "id": "16373fa5-07be-4cce-a54a-435a46ffafbb",
@@ -98,7 +98,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1120,
+        1568,
         0
       ],
       "id": "4a7f0085-24ac-4ed7-bd64-9a6fa617f076",
@@ -112,7 +112,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1344,
+        1792,
         0
       ],
       "id": "0ffa7ab9-6256-4d12-9743-f6f4eb82bb54",
@@ -127,7 +127,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1568,
+        2016,
         0
       ],
       "id": "d6ae2dec-83bd-4d29-80d5-b1765c5fc3c9",
@@ -141,7 +141,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        944,
+        1392,
         144
       ],
       "id": "dd42753b-e361-4a28-89fb-c1bde4cdd297",
@@ -156,11 +156,51 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1168,
+        1616,
         144
       ],
       "id": "1d95c776-6675-4df6-b017-2521f0c5fc75",
       "name": "Respond Comparison Error"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.design_image_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        672,
+        0
+      ],
+      "id": "0e583562-da55-4dd6-aa4b-29e2e577e1ce",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.site_image_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        0
+      ],
+      "id": "4aed68d7-b0c2-456c-9e46-05dba61f31c0",
+      "name": "HTTP Request1"
     }
   ],
   "pinData": {},
@@ -191,7 +231,7 @@
       "main": [
         [
           {
-            "node": "Gemini Vision Comparison",
+            "node": "HTTP Request",
             "type": "main",
             "index": 0
           }
@@ -259,6 +299,28 @@
           }
         ]
       ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Gemini Vision Comparison",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -266,7 +328,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "37064963-e431-4fbb-afc2-5ea8292eafec",
+  "versionId": "a86df796-b43f-4e30-8835-9575808d7b8f",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "79eb2363fbee7cc30d906fa9b6a70f1543b705b16a2432881d5a56a205a3de49"

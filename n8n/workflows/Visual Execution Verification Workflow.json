@@ -79,7 +79,7 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const output = $json;\n\nlet result = output;\n\n// Gemini simplified output ko handle karo\nif (typeof output === 'string') {\n  try {\n    result = JSON.parse(output);\n  } catch (e) {\n    throw new Error('Gemini returned invalid JSON.');\n  }\n}\n\n// Agar Gemini response ke andar text field hai\nif (typeof result.text === 'string') {\n  try {\n    result = JSON.parse(result.text);\n  } catch (e) {\n    throw new Error('Gemini text response is not valid JSON.');\n  }\n}\n\nreturn {\n  json: {\n    project_id: $('Validate Visual Input').item.json.project_id,\n    activity_id: $('Validate Visual Input').item.json.activity_id,\n    image_type: $('Validate Visual Input').item.json.image_type,\n\n    view_type: result.view_type ?? 'OTHER',\n    view_confidence: Number(result.view_confidence ?? 0),\n\n    visible_asset: result.visible_asset ?? null,\n    discipline: result.discipline ?? null,\n    location: result.location ?? null,\n\n    image_quality: result.image_quality ?? 'POOR',\n    confidence: Number(result.confidence ?? 0),\n\n    evidence: Array.isArray(result.evidence)\n      ? result.evidence\n      : []\n  }\n};"
+        "jsCode": "const output = $json;\n\nlet result = output;\n\n// Gemini response structure:\n// content.parts[0].text\nif (\n  output.content &&\n  Array.isArray(output.content.parts) &&\n  output.content.parts[0] &&\n  typeof output.content.parts[0].text === 'string'\n) {\n  result = output.content.parts[0].text;\n}\n\n// If result is a string, remove markdown code fences and parse JSON\nif (typeof result === 'string') {\n  result = result\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```\\s*/i, '')\n    .replace(/\\s*```$/i, '')\n    .trim();\n\n  try {\n    result = JSON.parse(result);\n  } catch (e) {\n    throw new Error(\n      'Gemini returned invalid JSON: ' + result\n    );\n  }\n}\n\nreturn {\n  json: {\n    project_id: $('Validate Visual Input').item.json.project_id,\n    activity_id: $('Validate Visual Input').item.json.activity_id,\n    image_type: $('Validate Visual Input').item.json.image_type,\n\n    view_type: result.view_type ?? 'OTHER',\n    view_confidence: Number(result.view_confidence ?? 0),\n\n    visible_asset: result.visible_asset ?? null,\n    discipline: result.discipline ?? null,\n    location: result.location ?? null,\n\n    image_quality: result.image_quality ?? 'POOR',\n    confidence: Number(result.confidence ?? 0),\n\n    evidence: Array.isArray(result.evidence)\n      ? result.evidence\n      : []\n  }\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -347,7 +347,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "3bb6761f-1724-4928-b0aa-91b57f56e385",
+  "versionId": "6e24b642-d8a5-48f9-9f4b-874d842669d9",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "79eb2363fbee7cc30d906fa9b6a70f1543b705b16a2432881d5a56a205a3de49"
