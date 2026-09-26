@@ -3,9 +3,13 @@ name: CI Pipeline
 on:
   push:
     branches:
+      - master
+      - dev
       - main
   pull_request:
     branches:
+      - master
+      - dev
       - main
 
 concurrency:
@@ -14,10 +18,10 @@ concurrency:
 
 jobs:
   # -------------------------------------------------------------
-  # Job 1: Frontend Lint & Typecheck
+  # Job 1: Frontend (Lint, Typecheck & Production Build)
   # -------------------------------------------------------------
   frontend:
-    name: Frontend (Lint & Typecheck)
+    name: Frontend (Lint, Typecheck & Build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -42,6 +46,13 @@ jobs:
 
       - name: Run TypeScript Typecheck
         run: npm run typecheck
+
+      - name: Run Production Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://jopmivqiwaaznuogczjl.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvcG1pdnFpd2Fhem51b2djempsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxNzA0NjMsImV4cCI6MjEwMzc0NjQ2M30.qXCflu2_UxgL8d750xfa_CfI_lJPYgh83_a_SCGFdQM' }}
+          NEXT_PUBLIC_DEMO_PROJECT_ID: '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4'
 
   # -------------------------------------------------------------
   # Job 2: Python Code Quality (Linting)

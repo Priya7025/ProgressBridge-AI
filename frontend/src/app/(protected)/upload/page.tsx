@@ -425,12 +425,12 @@ export default function UploadPage() {
       </div>
 
       {fileError && (
-        <div className="bg-[#111111] text-[#b71511] border border-[#b71511]/50 p-4 rounded-lg text-sm font-semibold shadow-sm flex items-center justify-between">
+        <div className="bg-destructive/10 text-destructive border border-destructive/40 p-4 rounded-lg text-sm font-semibold shadow-sm flex items-center justify-between">
           <span>{fileError}</span>
           <button
             type="button"
             onClick={() => setFileError(null)}
-            className="text-xs text-[#f1f2f3]/60 hover:text-white underline cursor-pointer ml-4"
+            className="text-xs text-muted-foreground hover:text-foreground underline cursor-pointer ml-4"
           >
             Dismiss
           </button>
@@ -438,12 +438,12 @@ export default function UploadPage() {
       )}
 
       {successMessage && (
-        <div className="bg-[#111111] text-emerald-400 border border-emerald-500/50 p-4 rounded-lg text-sm font-semibold shadow-sm flex items-center justify-between">
+        <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 p-4 rounded-lg text-sm font-semibold shadow-sm flex items-center justify-between">
           <span>{successMessage}</span>
           <button
             type="button"
             onClick={() => setSuccessMessage(null)}
-            className="text-xs text-[#f1f2f3]/60 hover:text-white underline cursor-pointer ml-4"
+            className="text-xs text-muted-foreground hover:text-foreground underline cursor-pointer ml-4"
           >
             Dismiss
           </button>
