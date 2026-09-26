@@ -267,9 +267,9 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Safe isolated storage path: {projectId}/{activityId}/site/{timestamp}-{sanitizedFilename}
+      // Safe isolated storage path: projects/{projectId}/activities/{activityId}/site/{timestamp}-{sanitizedFilename}
       const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
-      finalStoragePath = `${projectId}/${activity.id}/site/${uniqueSuffix}-${finalFileName}`
+      finalStoragePath = preUploadedPath || `projects/${projectId}/activities/${activity.id}/site/${uniqueSuffix}-${finalFileName}`
 
       const arrayBuffer = await file.arrayBuffer()
       const fileBuffer = Buffer.from(arrayBuffer)
@@ -278,7 +278,7 @@ export async function POST(request: NextRequest) {
         .from('visual-evidence')
         .upload(finalStoragePath, fileBuffer, {
           contentType: finalMimeType,
-          upsert: false,
+          upsert: true,
         })
 
       if (uploadError) {
