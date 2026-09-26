@@ -1486,24 +1486,19 @@ The final presentation should demonstrate real data flowing through the system.
 
 ---
 
-## 29. Documentation
+## 29. Documentation & Guides
 
-Keep these project documents synchronized with implementation:
+### Presentation & Operational Guides
+- [Golden Demo Presentation Script](docs/demo-script.md) — Step-by-step presentation script with verified test numbers and metrics.
+- [Troubleshooting & Incident Guide](docs/troubleshooting.md) — Root causes, workarounds, and demo fallback plans for live testing.
 
-```text
-README.md
-PRD.md
-REQUIREMENTS.md
-AGENTS.md
-STACK.md
-DATABASE.md
-API.md
-DESIGN.md
-DECISIONS.md
-KNOWN_ISSUES.md
-```
+### Project Architecture & Reference Specs
+- `README.md` — Project mission, architecture, pipeline, schema, and operational overview.
+- `PRD.md` — Product requirements document.
+- `REQUIREMENTS.md` — Formal requirements and acceptance criteria.
+- `AGENTS.md` — Hackathon agent guide, team branch ownership, and verification rules.
+- `docs/design.md` — UI design tokens, color palette, typography, and component styling.
 
-If an implementation decision changes the architecture, API contract, database schema, or deployment model, update the relevant documentation.
 
 ---
 

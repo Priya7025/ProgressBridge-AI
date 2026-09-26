@@ -1,1225 +1,1064 @@
-# ProgressBridge AI — 2-Day Hackathon Agent Guide
+# AGENTS.md — ProgressBridge AI Next-Round Execution Plan
 
-## 1. Project Mission
+## 1. Mission
 
-We are building **ProgressBridge AI** for SIH 2026, PS 26122:
+ProgressBridge AI has cleared Round 1 of the hackathon.
 
-> Intelligent Data Capture & Schedule-Linking Layer for Infrastructure Project Management: Real-Time Actual Progress Tracking (Planning-to-Execution Bridge)
+The next-round goal is **not to build a huge number of features**. The goal is to make the existing product:
 
-The demo must prove one real end-to-end flow:
+1. Fast and responsive
+2. More polished and realistic
+3. Clearly role-based for Planner and Supervisor
+4. Stronger in field execution workflow
+5. Differentiated through **Visual Execution Verification**
+6. Ready for a strong 3–4 minute online demo video
 
-**Planner uploads schedule → Supervisor uploads/sends field report → Gemini extracts structured progress → system matches report to L5/L6 schedule activity → confidence score shown → reviewer accepts → actual progress/status is updated → delay is calculated → dashboard reflects the delay → audit trail is recorded.**
+### Core product story
 
-### Golden demo activity
-
-Use **PIP-2458 — Erect Line 24-XX** as the primary acceptance-test activity.
-
-Expected real flow:
-
-1. Schedule contains PIP-2458.
-2. Supervisor submits a report about 24-XX spool erection in North Unit.
-3. Gemini extracts the activity event.
-4. Matching produces a realistic confidence score around the high-80% range.
-5. Event enters review when below the current auto-approval threshold.
-6. Reviewer accepts.
-7. Activity becomes COMPLETED with actual dates.
-8. Planned finish: 2026-08-23.
-9. Actual finish: 2026-08-31.
-10. Dashboard shows the resulting +8 day delay.
-11. Audit log records the approval/change.
-
-Do not fake these results for the final demo. The application must generate them through the real data flow.
+> **Planner plans. Supervisor captures. AI understands. Visual AI verifies. Planner approves. ProgressBridge updates the project truth.**
 
 ---
 
-# 2. Non-Negotiable Team Rules
+# 2. CRITICAL RULES
 
-## Branching
+## DO
 
-Production:
-- `master`
+- Keep the existing real-data architecture.
+- Use real Supabase data.
+- Reuse the existing schedule/matching/progress workflow.
+- Keep PIP-2458 as the main demo activity.
+- Build generic functionality, not PIP-2458-specific hardcoding.
+- Use loading skeletons/progressive rendering instead of blank screens.
+- Test every feature with the actual database.
+- Keep changes modular so they can be merged safely.
+- Document important implementation decisions in the PR.
 
-Integration/testing:
-- `dev`
+## DO NOT
 
-Feature branches:
-- `feature/ingestion`
-- `feature/matching`
-- `feature/frontend`
-- `feature/integration`
-
-Workflow:
-
-```text
-feature/* → Pull Request → dev → testing → master
-```
-
-Never push directly to `dev` or `master`.
-
-## Before starting work
-
-Every member:
-
-```powershell
-git fetch origin
-git checkout dev
-git pull origin dev
-git status
-```
-
-Create/use your own feature branch:
-
-```powershell
-git checkout -b feature/<your-area>
-```
-
-## Before committing
-
-```powershell
-git status
-git diff
-```
-
-Do not commit:
-- `.env`
-- API keys
-- Supabase service-role keys
-- Gemini/Voyage keys
-- Render secrets
-- ngrok secrets
-
-## Commit and PR
-
-```powershell
-git add .
-git commit -m "feat: <clear description>"
-git push origin feature/<your-area>
-```
-
-Then open:
-
-```text
-feature/<your-area> → dev
-```
-
-The team lead reviews and merges.
+- Do NOT deploy to production yet.
+- Do NOT spend time on permanent n8n hosting.
+- Do NOT add Cloudinary yet.
+- Do NOT replace Supabase Storage unless a real limitation is proven.
+- Do NOT rewrite the working matching engine.
+- Do NOT lower matching thresholds just to make the demo look better.
+- Do NOT hardcode dashboard counts, PIP-2458 status, confidence, delays, or AI outputs.
+- Do NOT create fake/mock progress data for the final demo.
+- Do NOT build signup functionality now.
+- Do NOT add 3D reconstruction in this sprint.
+- Do NOT build complex predictive ML unless all P0/P1 work is complete.
+- Do NOT redesign unrelated pages while fixing one feature.
+- Do NOT merge another member's branch blindly; resolve conflicts carefully and preserve working functionality.
 
 ---
 
-# 3. How To Use AI Coding Tools
+# 3. EXISTING GOLDEN FLOW — MUST NEVER BREAK
 
-Each member may use:
-
-- ChatGPT — architecture, debugging, test planning, SQL/API reasoning
-- Claude — code review, refactoring, edge cases, complex debugging
-- Antigravity — repository inspection, implementation, integration, testing
-- Other coding agents — only when they understand the current repository state
-
-## Rule for AI agents
-
-Never tell an AI agent:
-
-> "Build the whole project."
-
-Instead give it:
-1. exact task
-2. exact files/folders to inspect
-3. current expected behavior
-4. constraints
-5. acceptance tests
-6. instruction not to redesign unrelated UI
-7. instruction not to fabricate data
-
-## Every agent task must end with
-
-Ask the agent to report:
+The existing core workflow is:
 
 ```text
-Files changed:
-What was implemented:
-Tests executed:
-Test results:
-Known limitations:
-Environment variables required:
-Any database/migration changes:
-Commit-ready: YES/NO
+Schedule
+   ↓
+Daily Report / Time Agent
+   ↓
+Gemini Extraction
+   ↓
+Structured Progress Event
+   ↓
+Hybrid Schedule Matching
+   ↓
+Confidence + Review Queue
+   ↓
+Planner Accepts Match
+   ↓
+Actual Start / Finish
+   ↓
+Delay Calculation
+   ↓
+Dashboard
+   ↓
+Audit Trail
+```
+
+The new visual feature must extend this flow, not replace it.
+
+New direction:
+
+```text
+Engineering Design
+        +
+Daily Report
+        +
+Site Photos
+        ↓
+ProgressBridge AI
+        ↓
+Text Intelligence + Visual Intelligence
+        ↓
+Planner Review
+        ↓
+Trusted Schedule-Linked Progress
 ```
 
 ---
 
-# 4. MEMBER 1 — INGESTION + GEMINI + n8n
+# 4. PRIORITY ORDER
 
-## Branch
+## P0 — MUST FINISH FIRST
 
-```text
-feature/ingestion
-```
+1. Performance / loading fixes
+2. Supervisor Activity Center
+3. Deadline + discipline filtering/sorting
+4. Login + role selection UI
+5. Home page content/polish
+6. Protect existing end-to-end text/report workflow
 
-## Owner
+## P1 — MAIN DIFFERENTIATOR
 
-Member 1 owns the complete path:
+7. Design image upload
+8. Site photo upload
+9. Activity-linked image storage
+10. View classification
+11. Design vs actual visual comparison
+12. Visual confidence + evidence
+13. Planned vs Actual viewer
 
-**Supervisor input → n8n webhook → Gemini extraction → validation → progress_events → response**
+## P2 — ONLY AFTER P0/P1
 
-This member also owns deploying n8n on Render.
+14. Difference highlighting
+15. Visual timeline
+16. Better Time Agent role-specific experience
+17. Final visual polish
+18. Demo video preparation
 
 ---
 
-## Task 1 — Deploy n8n to Render
+# 5. TEAM STRUCTURE
 
-### Goal
+There are 4 members.
 
-Move the demo ingestion workflow away from local n8n + ngrok.
+## MEMBER 1 — AI + VISUAL INTELLIGENCE
 
-### Requirements
+### Primary responsibility
 
-Deploy a persistent n8n instance on Render.
+Build the **Visual Execution Verification** backend/AI pipeline.
 
-Configure:
-- n8n runtime
-- persistent storage/database as required by the chosen Render setup
-- webhook accessibility
-- Gemini credentials
-- Supabase credentials
-- required environment variables
+### Tasks
 
-The final webhook must be publicly reachable.
+#### P1.1 Design image analysis
+- Accept planner-uploaded design images.
+- Store metadata:
+  - project_id
+  - activity_id
+  - view_type
+  - storage_path
+  - uploaded_by
+  - created_at
+- Supported view types for MVP:
+  - FRONT
+  - LEFT
+  - RIGHT
+  - TOP
+  - OTHER
 
-Expected endpoint shape:
+#### P1.2 Site image analysis
+- Accept supervisor site photos.
+- Analyze:
+  - likely view type
+  - visible asset/object
+  - discipline clues
+  - location clues when available
+  - image quality
+- Return structured JSON.
 
-```text
-https://<render-n8n-domain>/webhook/ingest-text
-```
-
-### Acceptance test
-
-Send a real POST request to the webhook:
+#### P1.3 View classification
+Example:
 
 ```json
 {
-  "project_id": "<active-project-id>",
-  "text_content": "24-XX spool erection started at 10:30 AM in North Unit.",
-  "source_type": "time_agent"
+  "view_type": "FRONT",
+  "confidence": 0.94
 }
 ```
 
-Confirm:
-- webhook receives request
-- workflow executes
-- Gemini runs
-- Supabase receives the event
-- workflow does not silently fail
-- response is meaningful
+#### P1.4 Visual comparison
+Given:
+- design image
+- site image
+
+Return structured result such as:
+
+```json
+{
+  "asset_consistent": true,
+  "view_consistent": true,
+  "visual_similarity": 0.89,
+  "completion_state": "NEAR_COMPLETE",
+  "confidence": 0.88,
+  "differences": [
+    "Temporary scaffolding visible"
+  ]
+}
+```
+
+Do not claim exact construction percentage unless supported by reliable logic.
+
+#### P1.5 Evidence result
+Store the AI result so reopening the activity does NOT trigger Gemini again.
+
+### Efficiency requirements
+
+- Analyze one batch/job, not repeated calls for every page refresh.
+- Do not call Gemini again when an identical analysis already exists.
+- Resize/compress images before expensive AI processing.
+- Keep AI outputs structured and deterministic where practical.
+- If image quality is poor, return a clear review state instead of inventing conclusions.
+
+### Must not change
+
+- Existing text extraction workflow unless required for visual integration.
+- Existing matching thresholds.
+- Existing PIP-2458 behavior.
 
 ---
 
-## Task 2 — Verify Gemini extraction
+# 6. MEMBER 2 — BACKEND + DATABASE + SCHEDULE EXPERIENCE
 
-Extraction must produce structured fields, not only free text.
+### Primary responsibility
 
-Minimum fields:
+Build data support for:
+
+- supervisor activity center
+- deadlines
+- filters/sorting
+- visual evidence tables
+- API/data access
+
+### P0.1 Supervisor activities
+
+Create/query a list of activities relevant to the supervisor.
+
+Each activity should expose:
+
+- activity_id
+- description
+- discipline
+- asset
+- location
+- planned_start
+- planned_finish
+- actual_start
+- actual_finish
+- status
+- deadline state
+
+Deadline states should be calculated from real dates, for example:
 
 ```text
+Due today
+Due in 1 day
+Due in 3 days
+Overdue by 2 days
+```
+
+Never hardcode these values.
+
+### P0.2 Sorting/filtering
+
+Support:
+
+#### Discipline
+- All
+- Civil
+- Mechanical
+- Electrical
+- Piping
+- Instrumentation
+- HSE
+
+#### Status
+- All
+- Not Started
+- In Progress
+- Pending Review
+- Completed
+- Overdue
+
+#### Sort
+- Deadline — nearest first
+- Deadline — farthest first
+- Activity name
+- Status
+
+### P1.3 Visual database
+
+Suggested tables:
+
+#### `design_images`
+
+```text
+id
 project_id
-activity_description
-discipline
-asset
-location
-event_type
-event_date
-event_time
-source_type
+activity_id
+storage_path
+view_type
+uploaded_by
+created_at
 ```
 
-Expected example:
+#### `site_images`
 
-```json
-{
-  "discipline": "Piping",
-  "activity_description": "24-XX spool erection started at 10:30 AM in North Unit.",
-  "asset": "Line 24-XX",
-  "location": "North Unit",
-  "event_type": "STARTED"
-}
+```text
+id
+project_id
+activity_id
+storage_path
+capture_date
+view_type
+uploaded_by
+latitude (nullable)
+longitude (nullable)
+created_at
 ```
 
-### Requirements
+#### `visual_comparisons`
 
-Handle:
-- clear reports
-- missing fields
-- different wording
-- date/time variations
-- irrelevant text
-- malformed requests
-- Gemini/API failure
+```text
+id
+activity_id
+design_image_id
+site_image_id
+view_match_score
+visual_similarity
+completion_state
+differences
+confidence
+status
+created_at
+```
 
-Do not create fake successful records when Gemini fails.
+Use the existing schema conventions and inspect the current project before adding anything.
+
+### Performance requirements
+
+- Do not fetch all 890 activities for every screen.
+- Use pagination/limits for activity lists.
+- Fetch only the fields needed by the page.
+- Run independent queries in parallel where possible.
+- Add indexes only after checking current query patterns.
+- Avoid duplicate requests.
+
+### Must not break
+
+- schedule upload
+- activity details
+- matching RPC
+- review queue
+- approval logic
+- delay calculations
+- audit log
 
 ---
 
-## Task 3 — Verify progress_events insertion
+# 7. MEMBER 3 — FRONTEND + UX + PERFORMANCE
 
-Confirm the extracted event is stored in Supabase with the correct project.
+### Primary responsibility
 
-Expected initial state:
-
-```text
-PENDING_MATCH
-```
-
-Do not accidentally create duplicate events from one upload.
+This member owns the visible product experience.
 
 ---
 
-## Task 4 — Make the webhook reliable
+## P0.1 PERFORMANCE
 
-Test:
+First task: audit why pages take 10–12 seconds to load.
+
+Audit:
+
+- Dashboard
+- Activity list
+- Activity Details
+- Review Queue
+- Upload
+- Time Agent
+
+Check:
+
+- request waterfalls
+- duplicate Supabase requests
+- sequential queries
+- large client components
+- unnecessary rerenders
+- large JS bundles
+- charts loading too early
+- full-table fetches
+- missing pagination
+- missing caching
+- unnecessary client-side data fetching
+
+### Target experience
+
+Instead of:
 
 ```text
-200 success
-400 invalid payload
-500 workflow/server failure
-timeout behavior
-Gemini failure
-Supabase failure
+Click
+↓
+blank screen
+↓
+10–12 seconds
+↓
+everything
 ```
 
-Do not expose secrets in responses or logs.
+Aim for:
 
-If n8n currently responds immediately before workflow completion, configure the workflow so the frontend receives a useful completion/error response where practical.
+```text
+Click
+↓
+page shell immediately
+↓
+loading skeleton
+↓
+data progressively appears
+```
+
+Do not remove real data to make the page appear faster.
 
 ---
 
-## Task 5 — Connect frontend environment
+## P0.2 Supervisor Dashboard
 
-Provide the team with the permanent Render webhook.
+Build a role-specific dashboard.
 
-Frontend should ultimately use:
-
-```text
-INGESTION_WEBHOOK_URL=<render-webhook-url>
-```
-
-Do not commit the real URL if the project treats it as secret/configuration.
-
----
-
-## Task 6 — Export and document n8n
-
-Keep the workflow export in:
+Example sections:
 
 ```text
-n8n/workflows/
-```
+SUPERVISOR DASHBOARD
 
-Update documentation with:
-- workflow name
-- webhook path
-- expected payload
-- required credentials/env variables
-- how to test
-- known limitations
+Today's Work
 
----
-
-## Member 1 definition of done
-
-Member 1 is finished only when:
-
-- Render n8n is running
-- `/webhook/ingest-text` is reachable
-- Gemini extraction works
-- Supabase insertion works
-- invalid input is handled
-- frontend can use the endpoint
-- no local ngrok is required for the final demo
-- another teammate can reproduce the test from the documentation
-
----
-
-# 5. MEMBER 2 — MATCHING + REVIEW + ACTUAL PROGRESS + DELAY
-
-## Branch
-
-```text
-feature/matching
-```
-
-## Owner
-
-Member 2 owns:
-
-**progress event → schedule matching → confidence → review → acceptance → actual dates/status → delay → audit**
-
-This is the core intelligence and business-logic path.
-
----
-
-## Task 1 — Verify schedule matching
-
-Confirm matching uses the existing hybrid approach:
-
-```text
-semantic similarity
-+ activity/asset identifier
-+ discipline
-+ location
-```
-
-Current conceptual weights:
-
-```text
-50% semantic
-25% identifier
-15% discipline
-10% location
-```
-
-Do not replace the working matcher with a simpler exact-text lookup.
-
----
-
-## Task 2 — Verify embedding pipeline
-
-Confirm:
-- schedule activities can be embedded
-- embeddings have the expected dimension
-- matching can retrieve candidates
-- missing embeddings do not crash the pipeline
-- embedding API failures are handled
-
-Keep the current production/demo embedding strategy unless there is a verified reason to change it.
-
----
-
-## Task 3 — Verify confidence classification
-
-The system should support three outcomes conceptually:
-
-```text
-High confidence → automatic/fast acceptance
-Medium confidence → PENDING_REVIEW
-Low confidence → UNMATCHED
-```
-
-For the current demo, ensure the PIP-2458 test enters the review flow rather than bypassing it.
-
-Do not hardcode the displayed score.
-
----
-
-## Task 4 — Verify PIP-2458 matching
-
-Use the real activity:
-
-```text
-Activity ID: PIP-2458
-Description: Erect Line 24-XX
-Discipline: Piping
-Location: North Unit
-```
-
-Supervisor report:
-
-```text
-24-XX spool erection started at 10:30 AM in North Unit.
-```
-
-Expected result:
-- PIP-2458 selected
-- discipline match
-- location match
-- identifier/asset match
-- semantic score present
-- final confidence shown
-- event becomes reviewable
-
-The exact confidence value may vary slightly; do not hardcode it.
-
----
-
-## Task 5 — Verify review queue
-
-Review item should display enough information for a planner/reviewer to trust the recommendation:
-
-```text
-Source report
-Suggested activity
-Activity code
-Discipline
-Location
-Confidence score
-Sub-scores
-Event type
-Event date/time
-```
-
----
-
-## Task 6 — Verify Accept action
-
-When reviewer accepts PIP-2458:
-
-```text
-activity_match → APPROVED
-progress_event → MATCHED
-schedule activity → updated
-audit_log → MATCH_APPROVED
-```
-
-No duplicate match records.
-
----
-
-## Task 7 — Verify actual progress logic
-
-For the PIP-2458 demo path:
-
-```text
-Actual Start = 2026-08-20
-Actual Finish = 2026-08-31
-Status = COMPLETED
-```
-
-These values must come from the real accepted event/progress flow.
-
-Do not hardcode them into frontend components.
-
----
-
-## Task 8 — Verify delay calculation
-
-Planned finish:
-
-```text
-2026-08-23
-```
-
-Actual finish:
-
-```text
-2026-08-31
-```
-
-Expected:
-
-```text
-+8 days delay
-```
-
-The calculation must be data-driven.
-
-Also test an on-time activity so that:
-
-```text
-delay = 0
-```
-
-is possible.
-
----
-
-## Task 9 — Verify audit trail
-
-Acceptance must create an audit entry containing enough information to answer:
-
-```text
-Who approved it?
-When?
-Which activity?
-What changed?
-What were the old/new values?
-```
-
-Do not remove audit logging just to make the demo simpler.
-
----
-
-## Member 2 definition of done
-
-- PIP-2458 is found by real matching
-- confidence is computed, not hardcoded
-- review queue receives it
-- Accept works
-- actual dates update
-- status updates
-- delay is calculated
-- audit log is written
-- no fake KPI/data logic exists
-- edge cases do not crash the workflow
-
----
-
-# 6. MEMBER 3 — FRONTEND + API + DATA BINDING
-
-## Branch
-
-```text
-feature/frontend
-```
-
-## Owner
-
-Member 3 owns the UI's connection to the real backend.
-
-### IMPORTANT
-
-Do NOT redesign the existing UI.
-
-Keep:
-- current layout
-- current white theme
-- current visual style
-- current navigation
-
-Only fix functionality, data binding, states and bugs.
-
----
-
-## Task 1 — Dashboard
-
-Verify dashboard metrics are database-driven.
-
-Minimum important metrics:
-
-```text
-Total activities
+Due Today
+Due Tomorrow
+Overdue
 Completed
-Delayed
-Pending Review
-Unmatched
+
+MY ACTIVITIES
+
+PIP-2458
+Erect Line 24-XX
+
+Piping
+North Unit
+
+Due in 1 day
+[Upload Progress]
 ```
 
-The dashboard must react to real database changes.
+### Filters
+
+```text
+Discipline [All ▼]
+Status [All ▼]
+Sort [Deadline ▼]
+```
+
+### Important UX
+
+Deadline state must be visually clear:
+
+- Due today
+- Due in 1 day
+- Due in 3 days
+- Overdue
+
+No fake colors/counts/data.
+
+---
+
+## P0.3 Login UI
+
+Create:
+
+```text
+Welcome back
+
+Email
+Password
+
+Role [Supervisor ▼]
+
+[ LOG IN ]
+
+Don't have an account?
+SIGN UP
+```
+
+Role options:
+
+- Supervisor
+- Planner
+
+### Demo requirement
+
+Login can use the existing demo authentication behavior.
+
+Signup does NOT need to be functional now.
+
+If signup is clicked, use a clean non-breaking placeholder such as:
+
+```text
+Signup is coming soon.
+```
+
+Do not implement a full registration system in this sprint.
+
+---
+
+## P0.4 Home Page
+
+Make the home page explain ProgressBridge in under 10 seconds.
+
+### Hero
+
+```text
+ProgressBridge AI
+
+Bridge planning and site execution with AI.
+```
+
+### Core story
+
+```text
+PLAN
+Engineering Schedule
+
+↓
+
+CAPTURE
+Reports + Photos + Voice
+
+↓
+
+UNDERSTAND
+AI Extraction + Matching
+
+↓
+
+VERIFY
+Human Review + Visual Evidence
+
+↓
+
+ACT
+Real Progress + Delay Intelligence
+```
+
+### Feature sections
+
+1. AI Progress Capture
+2. Intelligent Schedule Linking
+3. Visual Execution Verification
+
+Add:
+
+```text
+[ LOG IN ]
+[ SIGN UP ]
+```
+
+Signup is visual/presentation-only for now.
+
+---
+
+## P1.5 Visual Progress UI
+
+Create a dedicated section inside Activity Details.
 
 Example:
 
 ```text
-Before acceptance:
-Delayed = 0
+PIP-2458 — Visual Progress
 
-After PIP-2458 acceptance:
-Delayed = 1
+PLANNED DESIGN        ACTUAL SITE
+
+[ Design Front ]      [ Site Front ]
+
+[ Design Side ]       [ Site Side ]
+
+AI Visual Analysis
+
+✓ Asset detected
+✓ View matched
+✓ Location consistent
+
+Visual Evidence Confidence
+88%
+
+[ Compare ]
 ```
 
-Do not hardcode:
+Add a Planned ↔ Actual slider if time permits.
+
+The goal is a highly understandable judge-facing interaction.
+
+---
+
+# 8. MEMBER 4 — INTEGRATION + QA + DEMO
+
+### Primary responsibility
+
+Keep the system stable while other members work.
+
+### Tasks
+
+#### P0.1 Regression protection
+
+After every merge, verify:
+
+- Dashboard loads
+- Activity page loads
+- PIP-2458 opens
+- Upload works
+- Text extraction works
+- Matching works
+- Review works
+- Accept works
+- Actual dates update
+- Delay updates
+- Audit trail updates
+
+#### P0.2 Demo data
+
+Keep the demo based on real data.
+
+Main example:
 
 ```text
-Delayed = 10
+PIP-2458
+Erect Line 24-XX
+Piping
+North Unit - Process Train A
+Planned Start: 2026-08-20
+Planned Finish: 2026-08-23
 ```
 
-or any other presentation-only value.
-
----
-
-## Task 2 — Activity Details
-
-For PIP-2458, Activity Details must show real fields:
+Existing real report:
 
 ```text
-Activity ID
-Description
-Status
-Planned Start
-Planned Finish
-Actual Start
-Actual Finish
-Variance
-Linked Match
-Confidence
-Source Report
-Audit History
+daily_site_report_piping_2026-08-20.txt
 ```
 
-Support both UUID and activity-code lookup where the current route/API requires it.
+Do not create hardcoded visual results.
 
----
+#### P0.3 Integration
 
-## Task 3 — Review page
+- Merge only tested PRs.
+- Resolve conflicts carefully.
+- Run lint/build/type checks after significant merges.
+- Never merge a feature that silently replaces DB-driven behavior with fake values.
 
-Verify the page renders:
-- real pending records
-- real confidence scores
-- source report
-- suggested activity
-- sub-scores
-- event details
-- Accept action
-- Reject/action behavior if already supported
+#### P0.4 Demo preparation
 
-No fake review rows.
-
----
-
-## Task 4 — Supervisor report upload
-
-Verify:
-- valid file uploads
-- supported text/report data is processed
-- loading state works
-- errors are visible
-- successful ingestion is reflected in backend/UI
-
-The UI should not claim success before the backend actually accepts the request.
-
----
-
-## Task 5 — Time Agent
-
-Verify Time Agent uses the real server route and real n8n ingestion endpoint.
-
-Expected path:
+Create the final clean demo sequence:
 
 ```text
-Time Agent UI
-→ /api/time-agent
-→ INGESTION_WEBHOOK_URL
-→ n8n
-→ Gemini
-→ progress_events
+Home
+↓
+Login
+↓
+Planner/Supervisor role
+↓
+Dashboard
+↓
+Activity
+↓
+Supervisor workflow
+↓
+Report upload / Time Agent
+↓
+AI extraction
+↓
+Schedule matching
+↓
+Human approval
+↓
+Actual progress + delay
+↓
+Visual Progress
+↓
+Planner Time Agent
+↓
+Final dashboard
 ```
-
-Remove any:
-- `setTimeout`
-- fake response
-- mock success message
-- local demo response
 
 ---
 
-## Task 6 — Empty-state correctness
+# 9. TIME AGENT — ROLE-SPECIFIC PURPOSE
 
-After demo reset:
+The Time Agent must have a clear reason to exist for each role.
+
+## Supervisor Time Agent = CAPTURE
+
+Goal:
+
+> Let a supervisor report site activity naturally without filling rigid forms.
+
+Example:
+
+> “Line 24-XX erection started at 10:30 AM in North Unit.”
+
+Expected structured output:
+
+- Activity/event
+- Asset
+- Discipline
+- Location
+- Date
+- Time
+- Evidence/source text
+
+## Planner Time Agent = UNDERSTAND
+
+Goal:
+
+> Let a planner query project intelligence from real data.
+
+Example questions:
+
+- “Which activities are delayed?”
+- “Show Piping activities due this week.”
+- “What happened to PIP-2458?”
+- “Which activities are pending review?”
+- “Why is PIP-2458 delayed?”
+- “Which activities have not received progress recently?”
+
+### Important
+
+Do not build a generic chatbot.
+
+The role determines the assistant's purpose.
+
+---
+
+# 10. VISUAL EXECUTION VERIFICATION — MVP
+
+## Planner side
+
+Planner uploads:
 
 ```text
-No fake progress records
-No fake review rows
-No fake delayed KPI
-No fake activity completion
+Activity: PIP-2458
+
+Front Design
+Side Design
+Top Design
 ```
 
-Schedule activities may remain because the schedule itself is real.
+## Supervisor side
 
----
-
-## Task 7 — Error states
-
-Check:
-- backend unavailable
-- n8n unavailable
-- empty result
-- missing project
-- invalid activity
-- malformed response
-
-Show useful messages instead of blank screens.
-
----
-
-## Member 3 definition of done
-
-- all visible data comes from real APIs/DB
-- no hardcoded demo values
-- PIP-2458 data renders correctly
-- review actions trigger backend changes
-- dashboard updates after backend changes
-- Time Agent is real
-- no unrelated UI redesign
-- build/lint/typecheck pass
-
----
-
-# 7. MEMBER 4 — INTEGRATION + QA + DATASET + DEMO
-
-## Branch
+Supervisor uploads:
 
 ```text
-feature/integration
+PIP-2458
+
+Front Site Photo
+Side Site Photo
+Top Site Photo
 ```
 
-## Owner
+## AI
 
-Member 4 is the integration/QA owner.
+AI determines:
 
-This member should NOT wait until the final hours to test.
+- view type
+- image quality
+- asset consistency
+- visual consistency
+- differences
+- confidence
 
----
+## Planner
 
-## Task 1 — Create one repeatable E2E test
-
-The acceptance flow:
+Planner sees:
 
 ```text
-RESET
- ↓
-Upload 890-row schedule
- ↓
-Confirm Total = 890
- ↓
-Supervisor sends/uploads report
- ↓
-n8n receives it
- ↓
-Gemini extracts event
- ↓
-progress_events created
- ↓
-Matcher finds PIP-2458
- ↓
-Confidence shown
- ↓
-Review queue gets event
- ↓
-Reviewer accepts
- ↓
-PIP-2458 updates
- ↓
-Actual finish = 2026-08-31
- ↓
-Delay = +8 days
- ↓
-Dashboard delayed count increases
- ↓
-Audit log exists
+PLANNED                  ACTUAL
+Design Front             Site Front
+
+Design Side              Site Side
+
+Design Top               Site Top
 ```
-
----
-
-## Task 2 — Test negative cases
-
-At minimum:
-
-### Case A — Normal valid report
-
-Expected:
-```text
-matched/reviewable
-```
-
-### Case B — Ambiguous report
-
-Expected:
-```text
-PENDING_REVIEW
-```
-
-### Case C — Unknown activity
-
-Expected:
-```text
-UNMATCHED
-```
-
-### Case D — Invalid/malformed input
-
-Expected:
-```text
-validation error
-```
-
-### Case E — Duplicate submission
-
-Expected:
-```text
-no accidental duplicate progress event/match
-```
-
----
-
-## Task 3 — Dataset verification
-
-Confirm schedule CSV behavior:
-
-```text
-890 activities
-```
-
-Confirm disciplines are still represented.
-
-The schedule upload should:
-- parse correctly
-- reject malformed rows
-- upsert correctly
-- preserve activity IDs
-- preserve planned dates
-- preserve embeddings where applicable
-
-Do not modify the dataset just to make metrics look better.
-
----
-
-## Task 4 — Reset workflow
-
-Verify the demo can return to a clean state.
-
-Clean state should mean:
-
-```text
-Schedule: present
-Progress events: empty
-Matches: empty
-Audit logs: empty
-Actual dates: reset
-Statuses: reset appropriately
-```
-
-Do not delete the schedule itself unless the demo specifically requires full re-import.
-
----
-
-## Task 5 — Cross-browser/manual test
-
-Run the actual application in at least:
-- Chrome
-- one additional browser if time permits
-
-Check:
-- login
-- dashboard
-- schedule upload
-- supervisor input
-- review
-- accept
-- activity details
-- dashboard refresh
-
----
-
-## Task 6 — Demo documentation
-
-Create/update:
-
-```text
-README.md
-docs/demo-script.md
-docs/troubleshooting.md
-```
-
-Demo script should contain exact clicks/input in order.
-
-Use the same PIP-2458 scenario for every rehearsal.
-
----
-
-## Task 7 — Regression gate
-
-Before recommending merge to `master`, run:
-
-```powershell
-npm run lint
-npm run typecheck
-npm run build
-```
-
-and the E2E manual flow.
-
-If a feature breaks another member's work, stop and coordinate before merging.
-
----
-
-## Member 4 definition of done
-
-- full flow tested
-- edge cases tested
-- reset verified
-- dataset verified
-- documentation ready
-- build/lint/typecheck pass
-- no critical blocker remains
-
----
-
-# 8. TEAM INTEGRATION SCHEDULE
-
-## DAY 1 — Build + Integrate
-
-### First block
-
-Member 1:
-- Render n8n deployment
-- Gemini workflow verification
-- permanent webhook
-
-Member 2:
-- matcher/review verification
-- PIP-2458 path
-
-Member 3:
-- frontend data binding
-- dashboard/review/activity fixes
-
-Member 4:
-- E2E test plan
-- dataset/reset verification
-
-### Middle block
-
-Create PRs:
-
-```text
-feature/ingestion → dev
-feature/matching → dev
-feature/frontend → dev
-feature/integration → dev
-```
-
-Team lead merges safe PRs into `dev`.
-
-### End of Day 1
-
-The complete PIP-2458 flow must work on `dev`.
-
-If not, stop adding features and fix the broken path.
-
----
-
-# 9. DAY 2 — STABILIZE + DEPLOY + REHEARSE
-
-## Morning
-
-Run the complete E2E flow repeatedly.
-
-Fix:
-- deployment failures
-- environment variables
-- API errors
-- database mismatches
-- UI/backend mismatches
-- duplicate events
-- stale dashboard values
-
-## Afternoon
-
-Deploy the `dev` build to the demo/staging environment.
-
-Test:
-
-```text
-Browser
-→ deployed frontend
-→ real Supabase
-→ hosted n8n
-→ Gemini
-→ matching
-→ review
-→ audit
-```
-
-No local-only dependency should remain.
-
-## Final phase
-
-Freeze feature work.
-
-Only fix blockers.
 
 Then:
 
 ```text
-dev → master
+Visual Evidence Confidence: 88%
+
+✓ Asset consistent
+✓ View consistent
+✓ Expected object visible
+
+⚠ Temporary scaffolding detected
 ```
 
-Deploy final `master` version.
+### Important safety/accuracy principle
+
+Visual AI should be presented as **evidence and a signal**, not as an unquestionable engineering certification.
 
 ---
 
-# 10. Environment Variables
+# 11. IMAGE STORAGE
 
-Never commit real secrets.
+Use **Supabase Storage** for the MVP.
 
-Typical categories include:
+Do NOT add Cloudinary unless a real performance/storage problem appears.
+
+Recommended flow:
 
 ```text
-Supabase URL
-Supabase anon/public key
-Supabase service key where server-side only
-Gemini API key
-Voyage/embedding API key where required
-INGESTION_WEBHOOK_URL
-N8N_WEBHOOK_BASE_URL
+Upload
+↓
+Compress/resize
+↓
+Supabase Storage
+↓
+Store path + metadata in DB
+↓
+Gemini Vision analysis
+↓
+Save structured result
 ```
 
-Keep secrets in:
-- local `.env.local`
-- Vercel environment settings
-- Render environment settings
-- Supabase/Edge Function secrets
-- n8n credentials/environment
+Do not store image binaries inside PostgreSQL.
+
+### Image efficiency
+
+- Compress large phone images
+- Prefer ~1–3 MB optimized images
+- Resize large dimensions
+- Generate thumbnails where useful
+- Do not re-run AI analysis when the same analysis already exists
 
 ---
 
-# 11. What NOT To Do
+# 12. GIT WORKFLOW
 
-Do not:
+Use:
 
-- redesign the UI
-- add unnecessary features
-- replace working architecture without proof
-- hardcode demo metrics
-- hardcode PIP-2458 completion
-- fake confidence scores
-- fake review records
-- fake delay values
-- create mock backend responses
-- delete audit logging
-- push directly to `dev`
-- push directly to `master`
-- commit `.env` files
-- spend hours on low-value visual polish
-- change the database schema without telling the team
-- merge code that has not been tested
+```text
+feature branch
+    ↓
+Pull Request
+    ↓
+dev
+    ↓
+Testing
+    ↓
+master
+```
+
+### Rules
+
+- No direct feature work on master.
+- Avoid direct dev edits unless required for integration.
+- One feature = one focused branch/PR.
+- PR description must say:
+  - what changed
+  - what was tested
+  - what remains
+- Keep commits small and meaningful.
+- Do not merge unrelated cleanup with feature work.
 
 ---
 
-# 12. Priority Order
+# 13. TEAM DEADLINE PLAN
 
-When time is limited, use this priority:
+## Phase 1 — Foundation
 
-## P0 — Must work
+### Member 1
+AI visual pipeline design + schema review
 
-```text
-Schedule upload
-Supervisor input
-n8n
-Gemini
-progress_events
-Matching
-Review
-Accept
-Actual dates/status
-Delay calculation
-Dashboard
-Audit log
-```
+### Member 2
+Supervisor activity APIs + deadline/filter/sort data
 
-## P1 — Important
+### Member 3
+Performance audit + fixes
 
-```text
-Time Agent
-Unmatched flow
-Ambiguous flow
-Error handling
-Reset
-Deployment stability
-```
+### Member 4
+Regression baseline + integration protection
 
-## P2 — Nice to have
-
-```text
-Extra analytics
-Advanced forecasting
-Extra UI polish
-Non-essential filters
-```
-
-Do not sacrifice P0 functionality for P2 features.
+**Do not start visual UI polishing until the performance problem is understood.**
 
 ---
 
-# 13. Final Demo Acceptance Checklist
+## Phase 2 — Product Experience
 
-The project is demo-ready only when all are YES:
+### Member 1
+Visual analysis + structured results
 
-- [ ] Hosted n8n works without local laptop dependency
-- [ ] Gemini extraction is real
-- [ ] 890-row schedule upload works
-- [ ] Supervisor report creates a real progress event
-- [ ] PIP-2458 is matched by the real matcher
-- [ ] Confidence/sub-scores are real
-- [ ] Review queue is real
-- [ ] Accept action is real
-- [ ] Actual Start/Finish are persisted
-- [ ] PIP-2458 becomes COMPLETED
-- [ ] +8 day delay is calculated
-- [ ] Dashboard delayed KPI updates from DB
-- [ ] Audit log is written
-- [ ] No fake presentation values remain
-- [ ] Reset returns the app to a clean demo state
-- [ ] Deployed frontend works
-- [ ] Deployed n8n works
-- [ ] Build passes
-- [ ] Lint passes
-- [ ] Typecheck passes
-- [ ] Full demo has been rehearsed at least 3 times
+### Member 2
+Image storage tables + backend endpoints
+
+### Member 3
+Supervisor dashboard + login + home page
+
+### Member 4
+Continuous integration + testing
 
 ---
 
-# 14. Standard AI Prompt Template
+## Phase 3 — Visual Feature
 
-Use this when assigning a coding-agent task:
+### Member 1
+Gemini Vision comparison
 
-```text
-You are working on ProgressBridge AI.
+### Member 2
+Visual comparison persistence + activity integration
 
-First inspect the existing repository and understand the current implementation.
+### Member 3
+Planned vs Actual visual UI
 
-Task:
-<exact task>
-
-Context:
-<why this matters>
-
-Relevant files:
-<files/folders>
-
-Constraints:
-- Do not redesign unrelated UI.
-- Do not introduce fake/mock/demo values.
-- Reuse existing architecture where possible.
-- Do not commit secrets.
-- Do not modify unrelated features.
-- Preserve existing working functionality.
-
-Acceptance criteria:
-1. ...
-2. ...
-3. ...
-
-Before finishing:
-- run lint
-- run typecheck
-- run build if practical
-- test the changed flow
-- report files changed
-- report tests and results
-- report known limitations
-- do not commit/push unless explicitly requested.
-```
+### Member 4
+End-to-end QA
 
 ---
 
-# 15. Team Lead Merge Rule
+## Phase 4 — Demo Polish
 
-The team lead controls integration.
+All members stop adding major features.
 
-For every PR:
+Only:
 
-```text
-1. Check changed files
-2. Check for hardcoded/fake data
-3. Check environment changes
-4. Review DB/schema changes
-5. Pull/test on dev
-6. Run lint/typecheck/build
-7. Run the affected E2E path
-8. Merge to dev
-```
-
-Only after all P0 acceptance checks pass:
-
-```text
-dev → master
-```
+- bug fixes
+- loading states
+- error states
+- spacing/alignment
+- text cleanup
+- demo data validation
+- demo rehearsal
 
 ---
 
-# 16. Golden Rule
+# 14. DEFINITION OF DONE
 
-**The final presentation must demonstrate a real system, not a scripted screen.**
+A task is NOT complete just because the code compiles.
 
-A judge should be able to watch:
+It is complete only when:
 
-**messy field input → AI extraction → intelligent matching → human trust/review → schedule-linked update → delay calculation → auditable project intelligence**
+- Feature works through the UI
+- Real database data is used
+- No hardcoded demo values
+- Empty/loading/error states work
+- Existing golden flow still works
+- Lint/typecheck/build pass where applicable
+- Another team member can reproduce it
 
-and see the database-backed result change live.
+---
+
+# 15. FINAL ACCEPTANCE CHECKLIST
+
+## Performance
+
+- [ ] Dashboard no longer waits 10–12 seconds with a blank screen
+- [ ] Activity page loads progressively
+- [ ] Activity lists are paginated/limited
+- [ ] Duplicate data requests removed
+
+## Roles
+
+- [ ] Login role selector works
+- [ ] Supervisor gets supervisor experience
+- [ ] Planner gets planner experience
+- [ ] Signup button does not break the UI
+
+## Supervisor
+
+- [ ] Activities visible
+- [ ] Deadline state shown
+- [ ] Discipline filter works
+- [ ] Deadline sort works
+- [ ] Status filtering works
+- [ ] Progress upload accessible
+
+## Planner
+
+- [ ] Schedule visible
+- [ ] Review queue works
+- [ ] Activity details work
+- [ ] Visual evidence visible
+- [ ] Time Agent can answer project questions
+
+## Time Agent
+
+- [ ] Supervisor = field capture
+- [ ] Planner = project intelligence
+
+## Visual Progress
+
+- [ ] Design upload
+- [ ] Site photo upload
+- [ ] Activity-linked storage
+- [ ] View classification
+- [ ] Visual comparison
+- [ ] Confidence/evidence
+- [ ] Planned vs Actual view
+- [ ] AI result saved and reused
+
+## Core
+
+- [ ] PIP-2458 flow still works
+- [ ] Match confidence still data-driven
+- [ ] Review approval works
+- [ ] Actual dates update
+- [ ] Delay updates
+- [ ] Audit trail updates
+- [ ] No fake dashboard numbers
+
+---
+
+# 16. DEMO VIDEO STORY
+
+The demo should NOT feel like a tour of 25 features.
+
+Tell one story:
+
+> **A project is planned. Work happens on site. The supervisor captures progress. AI structures and links it to the schedule. The planner verifies it. Then visual evidence shows what was actually built versus what was planned.**
+
+Recommended order:
+
+```text
+1. Home page
+2. Login + role
+3. Planner dashboard
+4. PIP-2458 schedule activity
+5. Supervisor Activity Center
+6. Deadline/filter/sort
+7. Supervisor report / Time Agent
+8. AI extraction
+9. Matching + confidence
+10. Planner approval
+11. Actual dates + delay
+12. Visual Progress
+13. Planner Time Agent
+14. Final dashboard
+```
+
+### Signature line for the demo
+
+> **“We don't just ask AI what happened on site. We connect what was planned, what was reported, and what is visibly present on site.”**
+
+---
+
+# 17. ANTI-SCOPE-CREEP RULE
+
+When someone proposes a new feature, ask:
+
+1. Does it improve the final demo?
+2. Does it strengthen the planning-to-execution story?
+3. Can we complete and test it within this sprint?
+4. Will it risk breaking the existing golden flow?
+
+If the answer is not clearly yes, postpone it.
+
+## Golden rule
+
+> **A smaller number of real, reliable, visually clear features is better than many unfinished AI features.**
