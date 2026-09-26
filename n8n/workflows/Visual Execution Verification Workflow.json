@@ -1,0 +1,358 @@
+{
+  "name": "Visual Execution Verification Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "visual-analyze",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "715544ba-8660-428e-94da-f9c315051642",
+      "name": "Webhook",
+      "webhookId": "bd7788d7-01b5-4a6b-afdb-19b9ed19af86"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = $json.body ?? $json;\n\nconst projectId = body.project_id;\nconst activityId = body.activity_id;\nconst imageType = body.image_type;\nconst imageUrl = body.image_url;\n\nif (!projectId || typeof projectId !== 'string') {\n  throw new Error(\"Validation Error: project_id is required.\");\n}\n\nif (!activityId || typeof activityId !== 'string') {\n  throw new Error(\"Validation Error: activity_id is required.\");\n}\n\nif (!imageType || typeof imageType !== 'string') {\n  throw new Error(\"Validation Error: image_type is required.\");\n}\n\nconst allowedImageTypes = [\n  \"DESIGN\",\n  \"SITE\"\n];\n\nconst normalizedImageType = imageType.trim().toUpperCase();\n\nif (!allowedImageTypes.includes(normalizedImageType)) {\n  throw new Error(\n    `Validation Error: image_type must be DESIGN or SITE. Received: ${imageType}`\n  );\n}\n\nif (!imageUrl || typeof imageUrl !== 'string') {\n  throw new Error(\"Validation Error: image_url is required.\");\n}\n\nreturn {\n  json: {\n    project_id: projectId.trim(),\n    activity_id: activityId.trim(),\n    image_type: normalizedImageType,\n    image_url: imageUrl.trim(),\n    received_at: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        0
+      ],
+      "id": "b5d8034b-1fa5-4186-ac2b-a8ae43a58a0e",
+      "name": "Validate Visual Input"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const imageUrl = $json.image_url;\n\nif (!imageUrl) {\n  throw new Error(\"Vision Error: image_url is missing.\");\n}\n\nconst imageType = $json.image_type;\n\nconst prompt = `\nYou are the Visual Execution Verification AI for an infrastructure project.\n\nAnalyze the provided ${imageType} image.\n\nReturn ONLY valid JSON.\n\nRequired fields:\n\n{\n  \"view_type\": \"FRONT | LEFT | RIGHT | TOP | OTHER\",\n  \"view_confidence\": 0.0,\n  \"visible_asset\": null,\n  \"discipline\": null,\n  \"location\": null,\n  \"image_quality\": \"GOOD | FAIR | POOR\",\n  \"confidence\": 0.0,\n  \"evidence\": []\n}\n\nRules:\n- Do not invent information that is not visually supported.\n- view_confidence must be between 0 and 1.\n- confidence must be between 0 and 1.\n- visible_asset should be null if the asset cannot be identified.\n- discipline should be null if it cannot be visually determined.\n- location should be null if it cannot be determined from the image.\n- evidence must contain short observations directly supported by the image.\n- Do not estimate construction completion percentage.\n`;\n\nreturn {\n  json: {\n    ...$json,\n    vision_prompt: prompt\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        0
+      ],
+      "id": "5a0590f4-9216-4641-86bc-dbf2dd1a1b53",
+      "name": "Prepare Vision Input"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.6-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.6-flash"
+        },
+        "text": "={{ $json.vision_prompt }}",
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1008,
+        0
+      ],
+      "id": "9d4b43d6-0cf3-4f48-9915-736f4f462be5",
+      "name": "Gemini Vision Analysis",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "PZCDVTEZ8QXzYNne",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const output = $json;\n\nlet result = output;\n\n// Gemini response structure:\n// content.parts[0].text\nif (\n  output.content &&\n  Array.isArray(output.content.parts) &&\n  output.content.parts[0] &&\n  typeof output.content.parts[0].text === 'string'\n) {\n  result = output.content.parts[0].text;\n}\n\n// If result is a string, remove markdown code fences and parse JSON\nif (typeof result === 'string') {\n  result = result\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```\\s*/i, '')\n    .replace(/\\s*```$/i, '')\n    .trim();\n\n  try {\n    result = JSON.parse(result);\n  } catch (e) {\n    throw new Error(\n      'Gemini returned invalid JSON: ' + result\n    );\n  }\n}\n\nreturn {\n  json: {\n    project_id: $('Validate Visual Input').item.json.project_id,\n    activity_id: $('Validate Visual Input').item.json.activity_id,\n    image_type: $('Validate Visual Input').item.json.image_type,\n\n    view_type: result.view_type ?? 'OTHER',\n    view_confidence: Number(result.view_confidence ?? 0),\n\n    visible_asset: result.visible_asset ?? null,\n    discipline: result.discipline ?? null,\n    location: result.location ?? null,\n\n    image_quality: result.image_quality ?? 'POOR',\n    confidence: Number(result.confidence ?? 0),\n\n    evidence: Array.isArray(result.evidence)\n      ? result.evidence\n      : []\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        0
+      ],
+      "id": "b2fa113b-2f23-47ef-ad89-8d88d3f632c9",
+      "name": "Parse Visual Result"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\n\n// Required fields\nif (!data.project_id) {\n  throw new Error(\"Validation Error: project_id is missing.\");\n}\n\nif (!data.activity_id) {\n  throw new Error(\"Validation Error: activity_id is missing.\");\n}\n\nif (![\"DESIGN\", \"SITE\"].includes(data.image_type)) {\n  throw new Error(\n    `Validation Error: invalid image_type: ${data.image_type}`\n  );\n}\n\n// Numeric confidence validation\nconst viewConfidence = Number(data.view_confidence);\nconst confidence = Number(data.confidence);\n\nif (\n  !Number.isFinite(viewConfidence) ||\n  viewConfidence < 0 ||\n  viewConfidence > 1\n) {\n  throw new Error(\n    \"Validation Error: view_confidence must be between 0 and 1.\"\n  );\n}\n\nif (\n  !Number.isFinite(confidence) ||\n  confidence < 0 ||\n  confidence > 1\n) {\n  throw new Error(\n    \"Validation Error: confidence must be between 0 and 1.\"\n  );\n}\n\n// Allowed values\nconst allowedViews = [\n  \"FRONT\",\n  \"LEFT\",\n  \"RIGHT\",\n  \"TOP\",\n  \"OTHER\"\n];\n\nif (!allowedViews.includes(data.view_type)) {\n  throw new Error(\n    `Validation Error: invalid view_type: ${data.view_type}`\n  );\n}\n\nconst allowedQuality = [\n  \"GOOD\",\n  \"FAIR\",\n  \"POOR\"\n];\n\nif (!allowedQuality.includes(data.image_quality)) {\n  throw new Error(\n    `Validation Error: invalid image_quality: ${data.image_quality}`\n  );\n}\n\n// Evidence must be an array\nif (!Array.isArray(data.evidence)) {\n  throw new Error(\n    \"Validation Error: evidence must be an array.\"\n  );\n}\n\nreturn {\n  json: {\n    ...data,\n    validation_status: \"VALID\",\n    validated_at: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        0
+      ],
+      "id": "786230ff-856a-4c88-9fa4-e095a9c29ae1",
+      "name": "Validate Visual Result"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\n\nreturn {\n  json: {\n    project_id: data.project_id,\n    activity_id: data.activity_id,\n    image_type: data.image_type,\n\n    view_type: data.view_type,\n    view_confidence: data.view_confidence,\n\n    visible_asset: data.visible_asset,\n    discipline: data.discipline,\n    location: data.location,\n\n    image_quality: data.image_quality,\n    confidence: data.confidence,\n    evidence: data.evidence,\n\n    validation_status: data.validation_status,\n\n    analysis_status: \"COMPLETED\",\n\n    analyzed_at: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        0
+      ],
+      "id": "0818b136-e831-4aa4-a715-fd3180e929ea",
+      "name": "Prepare Visual Result for Storage"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{\n{\n  success: true,\n  message: \"Visual analysis completed successfully\",\n  result: $json\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2048,
+        0
+      ],
+      "id": "a16e8f22-456a-4da1-b46e-9b60676f90c8",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const imageUrl = $json.image_url;\n\nif (!imageUrl) {\n  throw new Error(\"Image Processing Error: image_url is missing.\");\n}\n\nreturn {\n  json: {\n    ...$json,\n\n    image_processing: {\n      required: true,\n      max_dimension: 1600,\n      target_format: \"JPEG\",\n      quality: 80,\n      optimization_status: \"PENDING\"\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "5de81803-d822-4b87-9753-580b38e744fb",
+      "name": "Prepare Image Processing"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\n\nconst confidence = Number(data.confidence ?? 0);\nconst viewConfidence = Number(data.view_confidence ?? 0);\nconst imageQuality = data.image_quality;\n\nlet reviewStatus = \"AUTO_REVIEWABLE\";\nlet reviewReason = null;\n\n// Poor image quality\nif (imageQuality === \"POOR\") {\n  reviewStatus = \"REVIEW_REQUIRED\";\n  reviewReason = \"Image quality is too poor for reliable visual verification.\";\n}\n\n// Low overall confidence\nelse if (confidence < 0.60) {\n  reviewStatus = \"REVIEW_REQUIRED\";\n  reviewReason = \"AI confidence is below the reliable verification threshold.\";\n}\n\n// Low view confidence\nelse if (viewConfidence < 0.60) {\n  reviewStatus = \"REVIEW_REQUIRED\";\n  reviewReason = \"View classification confidence is too low.\";\n}\n\n// Missing visible asset\nelse if (!data.visible_asset) {\n  reviewStatus = \"REVIEW_REQUIRED\";\n  reviewReason = \"No reliable visible asset could be identified.\";\n}\n\nreturn {\n  json: {\n    ...data,\n    review_status: reviewStatus,\n    review_reason: reviewReason,\n    review_decided_at: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        0
+      ],
+      "id": "a160d2de-66c1-44ca-9c77-fe6c27d1f0de",
+      "name": "Visual Review Decision"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const input = $json;\n\nlet errorMessage = \"Visual AI analysis failed.\";\n\nif (input.error) {\n  if (typeof input.error === \"string\") {\n    errorMessage = input.error;\n  } else if (input.error.message) {\n    errorMessage = input.error.message;\n  }\n}\n\nreturn {\n  json: {\n    success: false,\n\n    project_id: input.project_id ?? null,\n    activity_id: input.activity_id ?? null,\n    image_type: input.image_type ?? null,\n\n    analysis_status: \"FAILED\",\n    review_status: \"REVIEW_REQUIRED\",\n\n    error_message: errorMessage,\n\n    retry_allowed: true,\n\n    failed_at: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        144
+      ],
+      "id": "58ecb241-791c-457f-9ae8-eea56d2fa981",
+      "name": "Handle Vision Error"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{\n{\n  success: false,\n  message: \"Visual analysis could not be completed.\",\n  result: $json\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1504,
+        144
+      ],
+      "id": "729bcece-e7f2-4697-a84f-8b664be1356b",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.image_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        816,
+        0
+      ],
+      "id": "c7cb338e-9379-4142-96d5-cf3a2f06f1cd",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Visual Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Visual Input": {
+      "main": [
+        [
+          {
+            "node": "Prepare Image Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Vision Input": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Vision Analysis": {
+      "main": [
+        [
+          {
+            "node": "Parse Visual Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Vision Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Visual Result": {
+      "main": [
+        [
+          {
+            "node": "Validate Visual Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Visual Result": {
+      "main": [
+        [
+          {
+            "node": "Visual Review Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Visual Result for Storage": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Image Processing": {
+      "main": [
+        [
+          {
+            "node": "Prepare Vision Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Visual Review Decision": {
+      "main": [
+        [
+          {
+            "node": "Prepare Visual Result for Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Vision Error": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Gemini Vision Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "65082d41-5237-4d1d-b5ac-6cd5e699abff",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "79eb2363fbee7cc30d906fa9b6a70f1543b705b16a2432881d5a56a205a3de49"
+  },
+  "nodeGroups": [],
+  "id": "nXm7hORLUBuixOpf",
+  "tags": []
+}

@@ -1,0 +1,489 @@
+{
+  "name": "Visual Design Site Comparison Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "visual-compare",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c2afa002-0ef9-4442-8cef-d8c6a80f6661",
+      "name": "Webhook",
+      "webhookId": "7ad2c075-fc1d-4de0-aa19-9db4f9514506"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = $json.body ?? $json;\n\nconst projectId = body.project_id;\nconst activityId = body.activity_id;\n\nconst designImageUrl = body.design_image_url;\nconst siteImageUrl = body.site_image_url;\n\nif (!projectId || typeof projectId !== 'string') {\n  throw new Error(\"Validation Error: project_id is required.\");\n}\n\nif (!activityId || typeof activityId !== 'string') {\n  throw new Error(\"Validation Error: activity_id is required.\");\n}\n\nif (!designImageUrl || typeof designImageUrl !== 'string') {\n  throw new Error(\"Validation Error: design_image_url is required.\");\n}\n\nif (!siteImageUrl || typeof siteImageUrl !== 'string') {\n  throw new Error(\"Validation Error: site_image_url is required.\");\n}\n\nreturn {\n  json: {\n    project_id: projectId.trim(),\n    activity_id: activityId.trim(),\n\n    design_image_url: designImageUrl.trim(),\n    site_image_url: siteImageUrl.trim(),\n\n    received_at: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "8d4f0d18-2e11-41ea-9c77-62c7ddba0e34",
+      "name": "Validate Comparison Input"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const designUrl = $json.design_image_url;\nconst siteUrl = $json.site_image_url;\n\nif (!designUrl || !siteUrl) {\n  throw new Error(\"Comparison Error: both design and site images are required.\");\n}\n\nconst prompt = `\nYou are the Visual Execution Verification AI for an infrastructure project.\n\nCompare the DESIGN image with the SITE image.\n\nYour task is to determine whether the visible site execution is visually consistent\nwith the provided design/reference image.\n\nReturn ONLY valid JSON in exactly this structure:\n\n{\n  \"asset_consistent\": true,\n  \"view_consistent\": true,\n  \"visual_similarity\": 0.0,\n  \"completion_state\": \"NOT_STARTED | IN_PROGRESS | NEAR_COMPLETE | COMPLETE | UNCLEAR\",\n  \"confidence\": 0.0,\n  \"differences\": []\n}\n\nRules:\n- Compare only what is visually supported by the two images.\n- Do not invent missing information.\n- Do not estimate a numerical construction completion percentage.\n- visual_similarity must be between 0 and 1.\n- confidence must be between 0 and 1.\n- asset_consistent indicates whether the visible asset/structure appears consistent.\n- view_consistent indicates whether the viewpoints are sufficiently comparable.\n- differences must contain short, concrete visual observations.\n- If the images are unclear or cannot be reliably compared, use \"UNCLEAR\".\n- Return JSON only. No markdown. No explanation outside JSON.\n`;\n\nreturn {\n  json: {\n    ...$json,\n    comparison_prompt: prompt\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "341475e6-d9c9-4bdd-8475-1931b29a2a14",
+      "name": "Prepare Comparison Prompt"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.6-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.6-flash"
+        },
+        "text": "={{ $('Prepare Comparison Prompt').item.json.comparison_prompt }}",
+        "imageUrls": "={{ $('Validate Comparison Input').item.json.design_image_url + ',' + $('Validate Comparison Input').item.json.site_image_url }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1568,
+        0
+      ],
+      "id": "038e02d0-356f-4937-90e9-5ffc602ed526",
+      "name": "Gemini Vision Comparison",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "PZCDVTEZ8QXzYNne",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const output = $json;\n\nlet result = output;\n\n// If Gemini returned a string\nif (typeof output === 'string') {\n  try {\n    result = JSON.parse(output);\n  } catch (e) {\n    throw new Error(\"Gemini comparison returned invalid JSON.\");\n  }\n}\n\n// If Gemini response contains text\nif (typeof result.text === 'string') {\n  try {\n    result = JSON.parse(result.text);\n  } catch (e) {\n    throw new Error(\"Gemini comparison text is not valid JSON.\");\n  }\n}\n\nreturn {\n  json: {\n    project_id: $('Validate Comparison Input').item.json.project_id,\n    activity_id: $('Validate Comparison Input').item.json.activity_id,\n\n    asset_consistent: Boolean(result.asset_consistent),\n    view_consistent: Boolean(result.view_consistent),\n\n    visual_similarity: Number(\n      result.visual_similarity ?? 0\n    ),\n\n    completion_state:\n      result.completion_state ?? \"UNCLEAR\",\n\n    confidence: Number(\n      result.confidence ?? 0\n    ),\n\n    differences: Array.isArray(result.differences)\n      ? result.differences\n      : []\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        0
+      ],
+      "id": "16373fa5-07be-4cce-a54a-435a46ffafbb",
+      "name": "Parse Comparison Result"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\n\nif (!data.project_id) {\n  throw new Error(\"Validation Error: project_id is missing.\");\n}\n\nif (!data.activity_id) {\n  throw new Error(\"Validation Error: activity_id is missing.\");\n}\n\nconst similarity = Number(data.visual_similarity);\nconst confidence = Number(data.confidence);\n\nif (!Number.isFinite(similarity) || similarity < 0 || similarity > 1) {\n  throw new Error(\n    \"Validation Error: visual_similarity must be between 0 and 1.\"\n  );\n}\n\nif (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) {\n  throw new Error(\n    \"Validation Error: confidence must be between 0 and 1.\"\n  );\n}\n\nconst allowedStates = [\n  \"NOT_STARTED\",\n  \"IN_PROGRESS\",\n  \"NEAR_COMPLETE\",\n  \"COMPLETE\",\n  \"UNCLEAR\"\n];\n\nif (!allowedStates.includes(data.completion_state)) {\n  throw new Error(\n    `Validation Error: invalid completion_state: ${data.completion_state}`\n  );\n}\n\nif (typeof data.asset_consistent !== \"boolean\") {\n  throw new Error(\n    \"Validation Error: asset_consistent must be boolean.\"\n  );\n}\n\nif (typeof data.view_consistent !== \"boolean\") {\n  throw new Error(\n    \"Validation Error: view_consistent must be boolean.\"\n  );\n}\n\nif (!Array.isArray(data.differences)) {\n  throw new Error(\n    \"Validation Error: differences must be an array.\"\n  );\n}\n\nreturn {\n  json: {\n    ...data,\n    validation_status: \"VALID\",\n    validated_at: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        0
+      ],
+      "id": "4a7f0085-24ac-4ed7-bd64-9a6fa617f076",
+      "name": "Validate Comparison Result"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\n\nreturn {\n  json: {\n    project_id: data.project_id,\n    activity_id: data.activity_id,\n\n    design_image_id: data.design_image_id,\n    site_image_id: data.site_image_id,\n\n    asset_consistent: data.asset_consistent,\n    view_consistent: data.view_consistent,\n    visual_similarity: data.visual_similarity,\n    completion_state: data.completion_state,\n    confidence: data.confidence,\n    differences: data.differences,\n\n    validation_status: data.validation_status,\n    comparison_status: \"COMPLETED\",\n    compared_at: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        0
+      ],
+      "id": "0ffa7ab9-6256-4d12-9743-f6f4eb82bb54",
+      "name": "Prepare Comparison Result for Storage"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{\n{\n  success: true,\n  message: \"Design-site visual comparison completed successfully\",\n  result: $json\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2688,
+        0
+      ],
+      "id": "d6ae2dec-83bd-4d29-80d5-b1765c5fc3c9",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const input = $json;\n\nlet errorMessage = \"Visual comparison failed.\";\n\nif (input.error) {\n  if (typeof input.error === \"string\") {\n    errorMessage = input.error;\n  } else if (input.error.message) {\n    errorMessage = input.error.message;\n  }\n}\n\nreturn {\n  json: {\n    success: false,\n\n    project_id: input.project_id ?? null,\n    activity_id: input.activity_id ?? null,\n\n    comparison_status: \"FAILED\",\n    review_status: \"REVIEW_REQUIRED\",\n\n    error_message: errorMessage,\n\n    retry_allowed: true,\n\n    failed_at: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        144
+      ],
+      "id": "dd42753b-e361-4a28-89fb-c1bde4cdd297",
+      "name": "Handle Comparison Error"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{\n{\n  success: false,\n  message: \"Visual comparison could not be completed.\",\n  result: $json\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2064,
+        144
+      ],
+      "id": "1d95c776-6675-4df6-b017-2521f0c5fc75",
+      "name": "Respond Comparison Error"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/visual/comparisons",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": " application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  design_image_id: $('Upload Design Image').item.json.data.id,\n  site_image_id: $('Upload Site Image').item.json.data.id,\n\n  view_match_score: $json.view_consistent ? 1 : 0,\n  visual_similarity: $json.visual_similarity,\n  completion_state: $json.completion_state,\n  differences: $json.differences,\n  confidence: $json.confidence,\n  status: \"PENDING_REVIEW\",\n  notes: \"Verified via Gemini Vision\"\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2464,
+        0
+      ],
+      "id": "4bf0465b-6ff0-4fa9-b631-275897c1bd7c",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.design_image_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "design_data"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        672,
+        0
+      ],
+      "id": "0e583562-da55-4dd6-aa4b-29e2e577e1ce",
+      "name": "Download Design Image"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Validate Comparison Input').item.json.site_image_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "site_data"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "4aed68d7-b0c2-456c-9e46-05dba61f31c0",
+      "name": "Download Site Image"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/visual/design-images",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "design_data"
+            },
+            {
+              "name": "project_id",
+              "value": "1c1711c7-11f8-43f0-babe-e6a7cefe1ad4"
+            },
+            {
+              "name": "activity_id",
+              "value": "2030a2db-0469-4e3a-9c23-5fae2a711142"
+            },
+            {
+              "name": "view_type",
+              "value": "FRONT"
+            },
+            {
+              "name": "preUploadedPath",
+              "value": "https://jopmivqiwaaznuogczjl.supabase.co/storage/v1/object/public/visual-evidence/projects/1c1711c7-11f8-43f0-babe-e6a7cefe1ad4/activities/2030a2db-0469-4e3a-9c23-5fae2a711142/design/test_front_design_1790351576094.jpg"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        0
+      ],
+      "id": "e8ac77f4-4f2d-45b9-a82a-ba3c14d3a701",
+      "name": "Upload Design Image"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/visual/site-images",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "site_data"
+            },
+            {
+              "name": "project_id",
+              "value": "1c1711c7-11f8-43f0-babe-e6a7cefe1ad4"
+            },
+            {
+              "name": "activity_id",
+              "value": "2030a2db-0469-4e3a-9c23-5fae2a711142"
+            },
+            {
+              "name": "view_type",
+              "value": "FRONT"
+            },
+            {
+              "name": "capture_date",
+              "value": "2026-08-20"
+            },
+            {
+              "name": "preUploadedPath",
+              "value": "projects/1c1711c7-11f8-43f0-babe-e6a7cefe1ad4/activities/2030a2db-0469-4e3a-9c23-5fae2a711142/site/test_front_site_1790351576094.jpg"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1344,
+        0
+      ],
+      "id": "f32aec7e-4938-406a-ad10-a64fa45e36b0",
+      "name": "Upload Site Image"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Comparison Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Comparison Input": {
+      "main": [
+        [
+          {
+            "node": "Prepare Comparison Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Comparison Prompt": {
+      "main": [
+        [
+          {
+            "node": "Download Design Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Vision Comparison": {
+      "main": [
+        [
+          {
+            "node": "Parse Comparison Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Comparison Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Comparison Result": {
+      "main": [
+        [
+          {
+            "node": "Validate Comparison Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Comparison Result": {
+      "main": [
+        [
+          {
+            "node": "Prepare Comparison Result for Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Comparison Result for Storage": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Comparison Error": {
+      "main": [
+        [
+          {
+            "node": "Respond Comparison Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Design Image": {
+      "main": [
+        [
+          {
+            "node": "Upload Design Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Site Image": {
+      "main": [
+        [
+          {
+            "node": "Upload Site Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Design Image": {
+      "main": [
+        [
+          {
+            "node": "Download Site Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Site Image": {
+      "main": [
+        [
+          {
+            "node": "Gemini Vision Comparison",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f01579ce-237f-4715-898e-d4824617df24",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "79eb2363fbee7cc30d906fa9b6a70f1543b705b16a2432881d5a56a205a3de49"
+  },
+  "nodeGroups": [],
+  "id": "d1ohOK4m49q6J7xI",
+  "tags": []
+}
