@@ -64,22 +64,15 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
   }
 
   // 4. PLANNER EXPERIENCE: Fetch all dashboard metric views concurrently in 1 Promise.all call
-  const [summaryRes, disciplineRes, actualActivitiesRes, pendingRes, unmatchedRes] = await Promise.all([
-    supabase
-      .from('project_dashboard_summary')
-      .select('*')
-      .eq('project_id', activeProjectId)
-      .maybeSingle(),
+  const [disciplineRes, allActivitiesRes, pendingRes, unmatchedRes] = await Promise.all([
     supabase
       .from('project_discipline_progress')
       .select('*')
       .eq('project_id', activeProjectId),
     supabase
       .from('schedule_activities')
-      .select('planned_finish, actual_finish')
-      .eq('project_id', activeProjectId)
-      .not('actual_finish', 'is', null)
-      .not('planned_finish', 'is', null),
+      .select('status, planned_finish, actual_finish')
+      .eq('project_id', activeProjectId),
     supabase
       .from('progress_events')
       .select('id', { count: 'exact', head: true })
@@ -92,27 +85,32 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
       .eq('status', 'UNMATCHED'),
   ])
 
-  const summary: DashboardSummary = summaryRes.data ?? {
+  const activities = (allActivitiesRes.data || []) as {
+    status: string | null
+    planned_finish: string | null
+    actual_finish: string | null
+  }[]
+
+  const totalActivities = activities.length
+  const completedCount = activities.filter((act) => act.status === 'COMPLETED').length
+  const delayedCount = activities.filter((act) => {
+    // 1. Explicit DELAYED status from imported schedule
+    if (act.status === 'DELAYED') return true
+    // 2. Activity with actual finish past planned finish (e.g., PIP-2458 completed with delay)
+    if (act.actual_finish && act.planned_finish && act.actual_finish > act.planned_finish) return true
+    return false
+  }).length
+
+  const pendingCount = pendingRes.count ?? 0
+  const unmatchedCount = unmatchedRes.count ?? 0
+
+  const summary: DashboardSummary = {
     project_id: activeProjectId,
-    total_activities: 0,
-    completed: 0,
-    in_progress: 0,
-    not_started: 0,
-    delayed: 0,
-    pending_review: pendingRes.count ?? 0,
-    unmatched: unmatchedRes.count ?? 0,
-  }
-
-  // Calculate actual delayed count
-  const actualDelayedCount = (actualActivitiesRes.data ?? []).filter(
-    (act) => act.actual_finish && act.planned_finish && act.actual_finish > act.planned_finish
-  ).length
-
-  summary.delayed = actualDelayedCount
-
-  if (summaryRes.data) {
-    summary.pending_review = summaryRes.data.pending_review ?? pendingRes.count ?? 0
-    summary.unmatched = summaryRes.data.unmatched ?? unmatchedRes.count ?? 0
+    total_activities: totalActivities,
+    completed: completedCount,
+    delayed: delayedCount,
+    pending_review: pendingCount,
+    unmatched: unmatchedCount,
   }
 
   const disciplineData: DisciplineProgressItem[] | null = disciplineRes.data

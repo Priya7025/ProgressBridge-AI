@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createDirectClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   getVisualComparisonsByActivity,
   resolveActivity,
@@ -11,7 +12,8 @@ import { VisualComparisonStatus } from '@/lib/visual/types'
 
 export async function GET(request: NextRequest) {
   try {
-    let supabase = await createClient()
+    const authClient = await createClient()
+    const supabaseAdmin = createAdminClient()
     const { searchParams } = new URL(request.url)
 
     const activityIdentifier =
@@ -27,10 +29,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Check user auth or fallback to service client in demo mode
+    // Check user auth or fallback in demo mode
     let user = null
     try {
-      const authRes = await supabase.auth.getUser()
+      const authRes = await authClient.auth.getUser()
       user = authRes.data.user
     } catch {
       // No active session
@@ -39,7 +41,7 @@ export async function GET(request: NextRequest) {
     let projectId = searchParams.get('project_id') || searchParams.get('projectId') || undefined
 
     if (user) {
-      const { data: profile } = await supabase
+      const { data: profile } = await supabaseAdmin
         .from('user_profiles')
         .select('project_ids')
         .eq('id', user.id)
@@ -47,12 +49,6 @@ export async function GET(request: NextRequest) {
 
       if (!projectId && profile?.project_ids?.length) {
         projectId = profile.project_ids[0]
-      }
-    } else {
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      if (serviceKey && supabaseUrl) {
-        supabase = createDirectClient(supabaseUrl, serviceKey)
       }
     }
 
@@ -62,8 +58,8 @@ export async function GET(request: NextRequest) {
         '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4'
     }
 
-    // Resolve activity UUID & metadata
-    const activity = await resolveActivity(supabase, activityIdentifier, projectId)
+    // Resolve activity UUID & metadata using server-side admin client
+    const activity = await resolveActivity(supabaseAdmin, activityIdentifier, projectId)
     if (!activity) {
       const errMsg = `Activity '${activityIdentifier}' not found in project ${projectId}.`
       return NextResponse.json(
@@ -76,7 +72,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const comparisons = await getVisualComparisonsByActivity(supabase, activity.id)
+    const comparisons = await getVisualComparisonsByActivity(supabaseAdmin, activity.id)
 
     return NextResponse.json(
       {
@@ -102,23 +98,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    let supabase = await createClient()
+    const authClient = await createClient()
+    const supabaseAdmin = createAdminClient()
 
-    // 1. Verify Authentication or Server Role Fallback
+    // 1. Verify Authentication
     let user = null
     try {
-      const authRes = await supabase.auth.getUser()
+      const authRes = await authClient.auth.getUser()
       user = authRes.data.user
     } catch {
       // No session
-    }
-
-    if (!user) {
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      if (serviceKey && supabaseUrl) {
-        supabase = createDirectClient(supabaseUrl, serviceKey)
-      }
     }
 
     const body = await request.json().catch(() => ({}))
@@ -146,8 +135,67 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Execute Comparison Save / Upsert
-    const result = await saveVisualComparison(supabase, {
+    // 2. If trigger_ai is requested or metric scores are not manually provided, run AI comparator pipeline
+    const shouldRunAi = body.trigger_ai || body.triggerAi || (confidence === undefined && visualSimilarity === undefined)
+
+    if (shouldRunAi) {
+      const [designRes, siteRes] = await Promise.all([
+        supabaseAdmin.from('design_images').select('*').eq('id', designImageId).maybeSingle(),
+        supabaseAdmin.from('site_images').select('*').eq('id', siteImageId).maybeSingle(),
+      ])
+
+      if (!designRes.data || !siteRes.data) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Not Found: Design image or site image not found.',
+            message: 'Design image or site image not found.',
+          },
+          { status: 404 }
+        )
+      }
+
+      const designImg = designRes.data
+      const siteImg = siteRes.data
+
+      const activity = await resolveActivity(supabaseAdmin, designImg.activity_id, projectId || designImg.project_id)
+      const { compareDesignAndSiteImages } = await import('@/lib/visual/comparator')
+      const compRes = await compareDesignAndSiteImages({
+        projectId: projectId || designImg.project_id,
+        activityId: designImg.activity_id,
+        activityCode: activity?.activity_id || 'PIP-2458',
+        activityDescription: activity?.description,
+        discipline: activity?.discipline,
+        location: activity?.location,
+        viewType: designImg.view_type,
+        designImage: designImg,
+        siteImage: siteImg,
+        supabase: supabaseAdmin,
+        forceRecompare: true,
+      })
+
+      if (!compRes.success || !compRes.data) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: compRes.error || 'Failed to generate visual comparison.',
+            message: compRes.error || 'Failed to generate visual comparison.',
+          },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json(
+        {
+          success: true,
+          data: compRes.data,
+        },
+        { status: 201 }
+      )
+    }
+
+    // 3. Execute Direct Comparison Save / Upsert using admin client
+    const result = await saveVisualComparison(supabaseAdmin, {
       designImageId,
       siteImageId,
       projectId,
@@ -190,42 +238,47 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    let supabase = await createClient()
+    const authClient = await createClient()
+    const supabaseAdmin = createAdminClient()
 
     // 1. Verify Authentication & Role
     let user = null
     try {
-      const authRes = await supabase.auth.getUser()
+      const authRes = await authClient.auth.getUser()
       user = authRes.data.user
     } catch {
       // No session
     }
 
+    const cookieStore = await cookies()
+    const cookieRole = cookieStore.get('pb_user_role')?.value
+
+    let userRole = cookieRole
     if (user) {
-      const { data: profile } = await supabase
+      const { data: profile } = await supabaseAdmin
         .from('user_profiles')
         .select('role')
         .eq('id', user.id)
         .single()
 
-      // Only planners can verify, flag, or reject comparisons
-      if (profile?.role === 'supervisor') {
-        const errMsg = 'Forbidden: Only planners can review, verify, or reject visual comparisons.'
-        return NextResponse.json(
-          {
-            success: false,
-            error: errMsg,
-            message: errMsg,
-          },
-          { status: 403 }
-        )
+      if (!userRole && profile?.role) {
+        userRole = profile.role
       }
-    } else {
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      if (serviceKey && supabaseUrl) {
-        supabase = createDirectClient(supabaseUrl, serviceKey)
-      }
+    }
+
+    const effectiveRole = (userRole || '').toLowerCase()
+
+    // Only planners can verify, flag, or reject comparisons
+    if (effectiveRole === 'supervisor') {
+      const errMsg = 'Forbidden: Only planners can review, verify, or reject visual comparisons.'
+      return NextResponse.json(
+        {
+          success: false,
+          error: errMsg,
+          message: errMsg,
+        },
+        { status: 403 }
+      )
     }
 
     const body = await request.json().catch(() => ({}))
@@ -254,8 +307,8 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // 2. Update Comparison Review Record
-    const result = await updateVisualComparisonReview(supabase, {
+    // 2. Update Comparison Review Record using admin client
+    const result = await updateVisualComparisonReview(supabaseAdmin, {
       comparisonId,
       status,
       notes,
@@ -286,3 +339,4 @@ export async function PATCH(request: NextRequest) {
     )
   }
 }
+

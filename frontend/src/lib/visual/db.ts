@@ -105,14 +105,14 @@ export async function resolveActivity(
   supabase: SupabaseClient,
   activityIdentifier: string,
   projectId?: string
-): Promise<{ id: string; activity_id: string; description: string; discipline: string | null } | null> {
+): Promise<{ id: string; project_id: string; activity_id: string; description: string; discipline: string | null; location: string | null; asset: string | null } | null> {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
     activityIdentifier
   )
 
   let query = supabase
     .from('schedule_activities')
-    .select('id, activity_id, description, discipline')
+    .select('id, project_id, activity_id, description, discipline, location, asset')
 
   if (isUuid) {
     query = query.eq('id', activityIdentifier)
@@ -489,6 +489,7 @@ export async function updateVisualComparisonReview(
 
 /**
  * Aggregates complete visual evidence for an activity.
+ * Automatically triggers AI visual execution verification if matching design and site images exist for a view without a comparison.
  */
 export async function getActivityVisualEvidence(
   supabase: SupabaseClient,
@@ -500,11 +501,51 @@ export async function getActivityVisualEvidence(
     return null
   }
 
-  const [designImages, siteImages, comparisons] = await Promise.all([
+  const [designImages, siteImages, initialComparisons] = await Promise.all([
     getDesignImagesByActivity(supabase, activity.id),
     getSiteImagesByActivity(supabase, activity.id),
     getVisualComparisonsByActivity(supabase, activity.id),
   ])
+
+  let comparisons = initialComparisons
+
+  // Check if any matching design_image & site_image pair for the same view_type is missing a valid comparison
+  const existingValidPairKeys = new Set(
+    comparisons
+      .filter((c) => c.confidence !== null && c.confidence !== undefined && c.confidence > 0)
+      .map((c) => `${c.design_image_id}_${c.site_image_id}`)
+  )
+
+  const missingPairsToTrigger: Array<{ design: DesignImage; site: SiteImage }> = []
+  for (const design of designImages) {
+    const matchingSite = siteImages.find((s) => s.view_type === design.view_type)
+    if (matchingSite && !existingValidPairKeys.has(`${design.id}_${matchingSite.id}`)) {
+      missingPairsToTrigger.push({ design, site: matchingSite })
+    }
+  }
+
+  if (missingPairsToTrigger.length > 0) {
+    const { compareDesignAndSiteImages } = await import('./comparator')
+    await Promise.all(
+      missingPairsToTrigger.map((pair) =>
+        compareDesignAndSiteImages({
+          projectId: activity.project_id || projectId || '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4',
+          activityId: activity.id,
+          activityCode: activity.activity_id,
+          activityDescription: activity.description,
+          discipline: activity.discipline,
+          location: activity.location,
+          viewType: pair.design.view_type,
+          designImage: pair.design,
+          siteImage: pair.site,
+          supabase,
+        })
+      )
+    )
+
+    // Re-fetch comparisons after generation
+    comparisons = await getVisualComparisonsByActivity(supabase, activity.id)
+  }
 
   const latestComparison = comparisons[0] || null
 

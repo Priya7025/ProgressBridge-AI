@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createDirectClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   getSiteImagesByActivity,
   normalizeViewType,
@@ -16,7 +17,8 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    let supabase = await createClient()
+    const authClient = await createClient()
+    const supabaseAdmin = createAdminClient()
     const { searchParams } = new URL(request.url)
 
     const activityIdentifier =
@@ -32,10 +34,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Check user auth or fallback to service client in demo mode
+    // Check user auth or fallback in demo mode
     let user = null
     try {
-      const authRes = await supabase.auth.getUser()
+      const authRes = await authClient.auth.getUser()
       user = authRes.data.user
     } catch {
       // No active session
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
     let projectId = searchParams.get('project_id') || searchParams.get('projectId') || undefined
 
     if (user) {
-      const { data: profile } = await supabase
+      const { data: profile } = await supabaseAdmin
         .from('user_profiles')
         .select('project_ids')
         .eq('id', user.id)
@@ -52,12 +54,6 @@ export async function GET(request: NextRequest) {
 
       if (!projectId && profile?.project_ids?.length) {
         projectId = profile.project_ids[0]
-      }
-    } else {
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      if (serviceKey && supabaseUrl) {
-        supabase = createDirectClient(supabaseUrl, serviceKey)
       }
     }
 
@@ -67,8 +63,8 @@ export async function GET(request: NextRequest) {
         '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4'
     }
 
-    // Resolve activity UUID & metadata
-    const activity = await resolveActivity(supabase, activityIdentifier, projectId)
+    // Resolve activity UUID & metadata using server-side admin client
+    const activity = await resolveActivity(supabaseAdmin, activityIdentifier, projectId)
     if (!activity) {
       const errMsg = `Activity '${activityIdentifier}' not found in project ${projectId}.`
       return NextResponse.json(
@@ -81,7 +77,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const siteImages = await getSiteImagesByActivity(supabase, activity.id)
+    const siteImages = await getSiteImagesByActivity(supabaseAdmin, activity.id)
 
     return NextResponse.json(
       {
@@ -107,13 +103,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   let uploadedPathToCleanup: string | null = null
-  let supabase = await createClient()
+  const authClient = await createClient()
+  const supabaseAdmin = createAdminClient()
 
   try {
-    // 1. Verify Authentication or Server Role Fallback
+    // 1. Verify Authentication
     let user = null
     try {
-      const authRes = await supabase.auth.getUser()
+      const authRes = await authClient.auth.getUser()
       user = authRes.data.user
     } catch {
       // No session
@@ -183,23 +180,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 3. Resolve User's Assigned Project
+    // 3. Resolve User's Assigned Project and Enforce Role Permissions
+    const cookieStore = await cookies()
+    const cookieRole = cookieStore.get('pb_user_role')?.value
+
+    let userRole = cookieRole
     if (user) {
-      const { data: profile } = await supabase
+      const { data: profile } = await supabaseAdmin
         .from('user_profiles')
         .select('project_ids, role')
         .eq('id', user.id)
         .single()
 
+      if (!userRole && profile?.role) {
+        userRole = profile.role
+      }
+
       if (!projectId && profile?.project_ids?.length) {
         projectId = profile.project_ids[0]
       }
-    } else {
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      if (serviceKey && supabaseUrl) {
-        supabase = createDirectClient(supabaseUrl, serviceKey)
-      }
+    }
+
+    const effectiveRole = (userRole || '').toLowerCase()
+
+    // Enforce: only supervisors can upload actual site execution photos
+    if (effectiveRole === 'planner') {
+      const errMsg = 'Forbidden: Only supervisors can upload site execution photos.'
+      return NextResponse.json(
+        {
+          success: false,
+          error: errMsg,
+          message: errMsg,
+        },
+        { status: 403 }
+      )
     }
 
     if (!projectId) {
@@ -208,8 +222,8 @@ export async function POST(request: NextRequest) {
         '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4'
     }
 
-    // 4. Resolve Activity
-    const activity = await resolveActivity(supabase, activityIdentifier, projectId)
+    // 4. Resolve Activity using admin client
+    const activity = await resolveActivity(supabaseAdmin, activityIdentifier, projectId)
     if (!activity) {
       const errMsg = `Activity '${activityIdentifier}' not found in project ${projectId}.`
       return NextResponse.json(
@@ -244,7 +258,7 @@ export async function POST(request: NextRequest) {
       finalMimeType = validation.mimeType
 
       // 6. Prevent Duplicate Uploads for same Activity + View Type + Filename + Capture Date
-      const { data: existingSite } = await supabase
+      const { data: existingSite } = await supabaseAdmin
         .from('site_images')
         .select('id, file_name, view_type, capture_date, storage_path, created_at')
         .eq('activity_id', activity.id)
@@ -274,7 +288,8 @@ export async function POST(request: NextRequest) {
       const arrayBuffer = await file.arrayBuffer()
       const fileBuffer = Buffer.from(arrayBuffer)
 
-      const { error: uploadError } = await supabase.storage
+      // Use server-side service-role client for Storage upload
+      const { error: uploadError } = await supabaseAdmin.storage
         .from('visual-evidence')
         .upload(finalStoragePath, fileBuffer, {
           contentType: finalMimeType,
@@ -303,8 +318,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 7. Register Record in Database
-    const result = await registerSiteImage(supabase, {
+    // 7. Register Record in Database using admin client
+    const result = await registerSiteImage(supabaseAdmin, {
       projectId,
       activityId: activity.id,
       storagePath: finalStoragePath!,
@@ -322,7 +337,7 @@ export async function POST(request: NextRequest) {
       // Rollback uploaded storage file if database registration failed
       if (uploadedPathToCleanup) {
         try {
-          await supabase.storage.from('visual-evidence').remove([uploadedPathToCleanup])
+          await supabaseAdmin.storage.from('visual-evidence').remove([uploadedPathToCleanup])
         } catch (cleanupErr) {
           console.error('[Storage Cleanup Error]:', cleanupErr)
         }
@@ -335,18 +350,54 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 8. Auto-trigger AI comparison if matching design drawing exists for this view type
+    let comparisonResult = null
+    try {
+      const { data: matchingDesign } = await supabaseAdmin
+        .from('design_images')
+        .select('*')
+        .eq('activity_id', activity.id)
+        .eq('view_type', normViewType)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (matchingDesign) {
+        const { compareDesignAndSiteImages } = await import('@/lib/visual/comparator')
+        const compRes = await compareDesignAndSiteImages({
+          projectId,
+          activityId: activity.id,
+          activityCode: activity.activity_id,
+          activityDescription: activity.description,
+          discipline: activity.discipline,
+          location: activity.location,
+          viewType: normViewType,
+          designImage: matchingDesign,
+          siteImage: result.data,
+          supabase: supabaseAdmin,
+          forceRecompare: true,
+        })
+        if (compRes.success && compRes.data) {
+          comparisonResult = compRes.data
+        }
+      }
+    } catch (compErr) {
+      console.error('[Auto Comparison Trigger Error on Site Upload]:', compErr)
+    }
+
     return NextResponse.json(
       {
         success: true,
         activity,
         data: result.data,
+        comparison: comparisonResult,
       },
       { status: 201 }
     )
   } catch (err: unknown) {
     if (uploadedPathToCleanup) {
       try {
-        await supabase.storage.from('visual-evidence').remove([uploadedPathToCleanup])
+        await supabaseAdmin.storage.from('visual-evidence').remove([uploadedPathToCleanup])
       } catch (cleanupErr) {
         console.error('[Storage Cleanup Exception]:', cleanupErr)
       }

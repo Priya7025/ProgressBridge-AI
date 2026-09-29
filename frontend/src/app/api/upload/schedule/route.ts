@@ -86,11 +86,14 @@ function calculateDuration(startStr: string | null, endStr: string | null): numb
 function normalizeStatus(statusStr: string | undefined): string {
   if (!statusStr) return 'NOT_STARTED'
   const upper = statusStr.trim().toUpperCase()
-  if (upper === 'COMPLETED' || upper === 'IN_PROGRESS' || upper === 'NOT_STARTED' || upper === 'ON_HOLD') {
+  if (
+    upper === 'COMPLETED' ||
+    upper === 'IN_PROGRESS' ||
+    upper === 'NOT_STARTED' ||
+    upper === 'DELAYED' ||
+    upper === 'ON_HOLD'
+  ) {
     return upper
-  }
-  if (upper === 'DELAYED') {
-    return 'IN_PROGRESS'
   }
   return 'NOT_STARTED'
 }

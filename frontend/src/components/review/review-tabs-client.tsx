@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { ReviewItemActions } from '@/components/review/review-item-actions'
-import { FileText, Sparkles, AlertCircle, ArrowRight } from 'lucide-react'
+import { FileText, Sparkles, AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react'
 
 export interface ReviewQueueItem {
   event_id: string
@@ -65,9 +65,49 @@ export function ReviewTabsClient({
   userId,
 }: ReviewTabsClientProps) {
   const [activeTab, setActiveTab] = useState<'pending' | 'unmatched'>('pending')
+  const [resolvedIds, setResolvedIds] = useState<Set<string>>(() => new Set())
+  const [successFeedback, setSuccessFeedback] = useState<string | null>(null)
+
+  const pendingList = useMemo(
+    () => pendingItems.filter((item) => !resolvedIds.has(item.event_id)),
+    [pendingItems, resolvedIds]
+  )
+
+  const unmatchedList = useMemo(
+    () => unmatchedItems.filter((item) => !resolvedIds.has(item.event_id)),
+    [unmatchedItems, resolvedIds]
+  )
+
+  const handleItemResolved = (eventId: string, mode: 'pending' | 'unmatched') => {
+    setResolvedIds((prev) => {
+      const next = new Set(prev)
+      next.add(eventId)
+      return next
+    })
+
+    if (mode === 'unmatched') {
+      setSuccessFeedback('Unmatched event marked as reviewed.')
+    } else {
+      setSuccessFeedback('Match decision processed and schedule updated.')
+    }
+
+    const timer = setTimeout(() => {
+      setSuccessFeedback(null)
+    }, 4000)
+
+    return () => clearTimeout(timer)
+  }
 
   return (
     <div className="space-y-6 w-full">
+      {/* SUCCESS TOAST / BANNER */}
+      {successFeedback && (
+        <div className="flex items-center gap-2 p-3 bg-primary/15 border border-primary/40 text-primary rounded-lg text-xs sm:text-sm font-semibold animate-in fade-in slide-in-from-top-2 duration-200">
+          <CheckCircle2 className="size-4 shrink-0" />
+          <span>{successFeedback}</span>
+        </div>
+      )}
+
       {/* TAB HEADERS */}
       <div className="flex items-center gap-2 sm:gap-4 border-b border-border/40 pb-1 overflow-x-auto">
         <button
@@ -87,7 +127,7 @@ export function ReviewTabsClient({
                 : 'bg-muted text-foreground border border-border/60'
             }`}
           >
-            {pendingItems.length}
+            {pendingList.length}
           </span>
         </button>
 
@@ -108,7 +148,7 @@ export function ReviewTabsClient({
                 : 'bg-muted text-foreground border border-border/60'
             }`}
           >
-            {unmatchedItems.length}
+            {unmatchedList.length}
           </span>
         </button>
       </div>
@@ -116,7 +156,7 @@ export function ReviewTabsClient({
       {/* TAB CONTENT: PENDING REVIEW */}
       {activeTab === 'pending' && (
         <div className="space-y-4 sm:space-y-6">
-          {pendingItems.length === 0 ? (
+          {pendingList.length === 0 ? (
             <Card className="bg-card text-card-foreground border border-border/60 rounded-xl p-6 sm:p-10 text-center shadow-sm">
               <CardContent className="space-y-2 pt-2">
                 <Sparkles className="size-8 text-primary mx-auto opacity-80" />
@@ -129,7 +169,7 @@ export function ReviewTabsClient({
               </CardContent>
             </Card>
           ) : (
-            pendingItems.map((item) => (
+            pendingList.map((item) => (
               <Card
                 key={item.event_id}
                 className="bg-card text-card-foreground border border-border/60 hover:border-primary/80 rounded-xl shadow-sm overflow-hidden transition-all"
@@ -148,6 +188,7 @@ export function ReviewTabsClient({
                         eventId={item.event_id}
                         userId={userId}
                         mode="pending"
+                        onResolved={handleItemResolved}
                       />
                     </div>
                   </div>
@@ -240,7 +281,7 @@ export function ReviewTabsClient({
       {/* TAB CONTENT: UNMATCHED */}
       {activeTab === 'unmatched' && (
         <div className="space-y-4 sm:space-y-6">
-          {unmatchedItems.length === 0 ? (
+          {unmatchedList.length === 0 ? (
             <Card className="bg-card text-card-foreground border border-border/60 rounded-xl p-6 sm:p-10 text-center shadow-sm">
               <CardContent className="space-y-2 pt-2">
                 <Sparkles className="size-8 text-primary mx-auto opacity-80" />
@@ -253,7 +294,7 @@ export function ReviewTabsClient({
               </CardContent>
             </Card>
           ) : (
-            unmatchedItems.map((item) => (
+            unmatchedList.map((item) => (
               <Card
                 key={item.event_id}
                 className="bg-card text-card-foreground border border-border/60 hover:border-primary/80 rounded-xl shadow-sm overflow-hidden transition-all"
@@ -271,6 +312,7 @@ export function ReviewTabsClient({
                         eventId={item.event_id}
                         userId={userId}
                         mode="unmatched"
+                        onResolved={handleItemResolved}
                       />
                     </div>
                   </div>

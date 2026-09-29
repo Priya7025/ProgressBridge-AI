@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { VisualProgressClient } from '@/components/activities/visual-progress-client'
@@ -125,6 +126,17 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
   if (!user) {
     redirect('/login')
   }
+
+  const cookieStore = await cookies()
+  const cookieRole = cookieStore.get('pb_user_role')?.value
+
+  const { data: userProfile } = await supabase
+    .from('user_profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const userRole = cookieRole || userProfile?.role || 'planner'
 
   const { id } = resolvedParams
 
@@ -354,6 +366,7 @@ export default async function ActivityDetailsPage({ params }: PageProps) {
         activityCode={activity.activity_id || 'UNNAMED'}
         projectId={activity.project_id}
         userId={user.id}
+        userRole={userRole}
         discipline={activity.discipline}
         location={activity.location}
       />

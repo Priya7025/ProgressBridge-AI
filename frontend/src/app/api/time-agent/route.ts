@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createDirectClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
+import { classifyIntent, PlannerIntent } from '@/lib/time-agent/intent'
+import { handlePlannerIntelligence } from '@/lib/time-agent/planner-intelligence'
 
 function extractEventMetadata(evt: {
   discipline?: string | null
@@ -427,6 +431,7 @@ interface IngestRequestBody {
   text_content?: string
   projectId?: string
   project_id?: string
+  role?: string
 }
 
 export async function POST(req: NextRequest) {
@@ -441,27 +446,39 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // 1. Resolve User & Role
+    let userRole = body.role?.toLowerCase() || null
     let projectId = body.projectId?.trim() || body.project_id?.trim()
 
-    if (!projectId) {
-      try {
-        const supabase = await createClient()
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-
-        if (user) {
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('project_ids')
-            .eq('id', user.id)
-            .single()
-
-          projectId = profile?.project_ids?.[0]
-        }
-      } catch {
-        // Fall back to environment demo project ID
+    const serverSupabase = await createClient()
+    try {
+      const cookieStore = await cookies()
+      const cookieRole = cookieStore.get('pb_user_role')?.value
+      if (cookieRole && !userRole) {
+        userRole = cookieRole.toLowerCase()
       }
+
+      const { data: { user } } = await serverSupabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await serverSupabase
+          .from('user_profiles')
+          .select('role, project_ids')
+          .eq('id', user.id)
+          .single()
+
+        if (!userRole && profile?.role) {
+          userRole = profile.role.toLowerCase()
+        }
+        if (!projectId && profile?.project_ids?.length) {
+          projectId = profile.project_ids[0]
+        }
+      }
+    } catch {
+      // Fall back
+    }
+
+    if (!userRole) {
+      userRole = 'planner'
     }
 
     if (!projectId) {
@@ -470,73 +487,110 @@ export async function POST(req: NextRequest) {
         '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4'
     }
 
-    const webhookUrl = process.env.INGESTION_WEBHOOK_URL?.trim()
+    // Direct Supabase Client with service key if available for complete DB queries
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    const supabaseServiceKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      ''
 
-    // When INGESTION_WEBHOOK_URL is not configured yet
-    if (!webhookUrl) {
-      return NextResponse.json(
-        {
-          success: false,
-          connected: false,
-          error: 'NOT_CONFIGURED',
-          message:
-            'Time Agent backend is not connected yet. Configure INGESTION_WEBHOOK_URL in your environment variables to enable live AI extraction.',
-        },
-        { status: 503 }
-      )
+    let queryClient = serverSupabase
+    if (supabaseUrl && supabaseServiceKey) {
+      queryClient = createDirectClient(supabaseUrl, supabaseServiceKey)
     }
 
-    // n8n Contract Payload
-    const payload = {
-      project_id: projectId,
-      text_content: textContent,
-      source_type: 'time_agent',
-    }
+    // 2. Intent Classification BEFORE any event extraction
+    const intentResult = classifyIntent(textContent, userRole)
 
-    console.log(`[Time Agent Proxy] Sending POST to: ${webhookUrl}`)
-    console.log(`[Time Agent Proxy] Payload metadata: project_id=${projectId}, source_type=${payload.source_type}, text_length=${textContent.length}`)
+    console.log(`[Time Agent Router] Classified input: intent=${intentResult.intent}, category=${intentResult.category}, role=${userRole}, activityCode=${intentResult.activityCode || 'none'}`)
 
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 4000)
-
-    let rawEvents: Array<Record<string, unknown>> = []
-
-    try {
-      const n8nResponse = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'ngrok-skip-browser-warning': 'true',
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
+    // 3. ROUTE A: Planner Project Intelligence or Clarification
+    // MUST NOT create progress_events row, MUST NOT create activity_matches row, MUST NOT pollute review queue
+    if (
+      intentResult.category === 'PLANNER_INTELLIGENCE' ||
+      intentResult.category === 'CLARIFICATION' ||
+      (userRole === 'planner' && intentResult.category !== 'PROGRESS_CAPTURE')
+    ) {
+      const intelResult = await handlePlannerIntelligence({
+        intent: intentResult.intent as PlannerIntent | 'CLARIFICATION',
+        query: textContent,
+        projectId,
+        activityCode: intentResult.activityCode,
+        discipline: intentResult.discipline,
+        timeWindow: intentResult.timeWindow,
+        asset: intentResult.asset,
+        role: userRole,
+        supabase: queryClient,
       })
 
-      clearTimeout(timeoutId)
+      return NextResponse.json({
+        success: true,
+        type: 'intelligence',
+        intent: intentResult.intent,
+        role: userRole,
+        message: intelResult.message,
+        activity: intelResult.activity || null,
+        details: intelResult.details || null,
+        events: [],
+        data: {
+          project_id: projectId,
+          type: 'intelligence',
+          intent: intentResult.intent,
+          message: intelResult.message,
+          activity: intelResult.activity || null,
+          details: intelResult.details || null,
+          events: [],
+        },
+      })
+    }
 
-      console.log(`[Time Agent Proxy] Upstream response: HTTP ${n8nResponse.status} ${n8nResponse.statusText}`)
+    // 4. ROUTE B: Supervisor Progress Capture Pipeline
+    const webhookUrl = process.env.INGESTION_WEBHOOK_URL?.trim()
+    let rawEvents: Array<Record<string, unknown>> = []
 
-      if (n8nResponse.ok) {
-        const responseText = await n8nResponse.text().catch(() => '')
-        if (responseText && responseText.trim()) {
-          try {
-            const parsed = JSON.parse(responseText)
-            rawEvents =
-              (parsed?.data as { events?: Array<Record<string, unknown>> })?.events ||
-              (parsed?.events as Array<Record<string, unknown>>) ||
-              []
-          } catch {
-            // Unparseable response, will fall back
+    if (webhookUrl) {
+      const payload = {
+        project_id: projectId,
+        text_content: textContent,
+        source_type: 'time_agent',
+      }
+
+      console.log(`[Time Agent Proxy] Sending POST to: ${webhookUrl}`)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 4000)
+
+      try {
+        const n8nResponse = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'ngrok-skip-browser-warning': 'true',
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId)
+
+        if (n8nResponse.ok) {
+          const responseText = await n8nResponse.text().catch(() => '')
+          if (responseText && responseText.trim()) {
+            try {
+              const parsed = JSON.parse(responseText)
+              rawEvents =
+                (parsed?.data as { events?: Array<Record<string, unknown>> })?.events ||
+                (parsed?.events as Array<Record<string, unknown>>) ||
+                []
+            } catch {
+              // Fallback to direct extraction
+            }
           }
         }
-      } else {
-        console.warn(`[Time Agent Proxy] n8n responded with HTTP ${n8nResponse.status}. Falling back to direct extraction.`)
+      } catch {
+        clearTimeout(timeoutId)
+        console.warn(`[Time Agent Proxy] n8n fetch skipped/timed out. Proceeding with direct structured extraction fallback.`)
       }
-    } catch (fetchErr: unknown) {
-      clearTimeout(timeoutId)
-      const err = fetchErr as Error
-      console.warn(`[Time Agent Proxy] n8n fetch did not complete (${err.message}). Proceeding with direct structured extraction fallback.`)
     }
 
     // If n8n returned empty or no events, parse structured events directly from text content
@@ -544,18 +598,9 @@ export async function POST(req: NextRequest) {
       rawEvents = parseTextToStructuredEvents(textContent)
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-    const supabaseServiceKey =
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-      ''
-
     const insertedEvents: Array<Record<string, unknown>> = []
 
     if (Array.isArray(rawEvents) && rawEvents.length > 0 && supabaseUrl && supabaseServiceKey) {
-      const { createClient: createSupabaseClient } = await import('@supabase/supabase-js')
-      const supabase = createSupabaseClient(supabaseUrl, supabaseServiceKey)
-
       for (const evt of rawEvents) {
         const norm = extractEventMetadata({
           discipline: (evt.discipline as string | null) || null,
@@ -566,7 +611,7 @@ export async function POST(req: NextRequest) {
           event_date: (evt.event_date as string | null) || null,
         })
 
-        const { data: inserted, error: insertErr } = await supabase
+        const { data: inserted, error: insertErr } = await queryClient
           .from('progress_events')
           .insert({
             project_id: projectId,
@@ -617,11 +662,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      type: 'capture',
       connected: true,
       count: insertedEvents.length,
       events: insertedEvents,
       data: {
         project_id: projectId,
+        type: 'capture',
         events_count: insertedEvents.length,
         events: insertedEvents,
       },

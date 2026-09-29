@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createDirectClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   getActivityVisualEvidence,
 } from '@/lib/visual/db'
 
 export async function GET(request: NextRequest) {
   try {
-    let supabase = await createClient()
+    const authClient = await createClient()
+    const supabaseAdmin = createAdminClient()
     const { searchParams } = new URL(request.url)
 
     const activityIdentifier =
@@ -23,10 +24,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Check user auth or fallback to service client in demo mode
+    // Check user auth or fallback in demo mode
     let user = null
     try {
-      const authRes = await supabase.auth.getUser()
+      const authRes = await authClient.auth.getUser()
       user = authRes.data.user
     } catch {
       // No active session
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     let projectId = searchParams.get('project_id') || searchParams.get('projectId') || undefined
 
     if (user) {
-      const { data: profile } = await supabase
+      const { data: profile } = await supabaseAdmin
         .from('user_profiles')
         .select('project_ids')
         .eq('id', user.id)
@@ -43,12 +44,6 @@ export async function GET(request: NextRequest) {
 
       if (!projectId && profile?.project_ids?.length) {
         projectId = profile.project_ids[0]
-      }
-    } else {
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      if (serviceKey && supabaseUrl) {
-        supabase = createDirectClient(supabaseUrl, serviceKey)
       }
     }
 
@@ -58,7 +53,7 @@ export async function GET(request: NextRequest) {
         '1c1711c7-11f8-43f0-babe-e6a7cefe1ad4'
     }
 
-    const evidence = await getActivityVisualEvidence(supabase, activityIdentifier, projectId)
+    const evidence = await getActivityVisualEvidence(supabaseAdmin, activityIdentifier, projectId)
 
     if (!evidence) {
       const errMsg = `Activity '${activityIdentifier}' not found in project ${projectId}.`
@@ -91,3 +86,4 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
